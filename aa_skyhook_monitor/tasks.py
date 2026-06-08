@@ -1,10 +1,13 @@
 import logging
 import requests
 from celery import shared_task
+from datetime import timedelta
+
+from django.db.models import F
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from esi.models import Token
-from .models import SkyhookOwner, Skyhook, SkyhookReagent
+from .models import SkyhookOwner, Skyhook, SkyhookReagent, SkyhookConfiguration
 
 logger = logging.getLogger(__name__)
 REQUIRED_SCOPES = ['esi-structures.read_corporation.v1']
@@ -35,6 +38,93 @@ def _esi_get(path, token):
     resp = requests.get(url, headers=headers)
     resp.raise_for_status()
     return resp.json()
+
+
+def _format_dt(dt):
+    return dt.strftime('%d.%m. %H:%M') if dt else '—'
+
+
+def _build_reagent_text(skyhook):
+    lines = []
+    for r in skyhook.reagents.all():
+        lines.append(
+            f"**{r.type_name}**\n"
+            f"Unsecured: {r.unsecured_stock:,} ({round(r.unsecured_stock * r.volume):,} m³) · "
+            f"Secured: {r.secured_stock:,} ({round(r.secured_stock * r.volume):,} m³)"
+        )
+    return '\n'.join(lines) if lines else 'Keine Reagents'
+
+
+def _send_discord(payload):
+    webhook_url = SkyhookConfiguration.get_webhook_url()
+    if not webhook_url:
+        return
+    try:
+        requests.post(webhook_url, json=payload, timeout=10)
+    except Exception as e:
+        logger.error('Discord webhook failed: %s', e)
+
+
+def _send_warning_ping(skyhook):
+    embed = {
+        'title': '⏰ Skyhook bald vulnerable',
+        'color': 0xFFA500,
+        'fields': [
+            {'name': 'Corp', 'value': skyhook.owner.corporation.corporation_name, 'inline': True},
+            {'name': 'Planet', 'value': skyhook.planet_name, 'inline': True},
+            {'name': '\u200b', 'value': '\u200b', 'inline': False},
+            {'name': 'Vuln Start', 'value': f"{_format_dt(skyhook.theft_vulnerability_start)} EVE", 'inline': True},
+            {'name': 'Vuln End', 'value': f"{_format_dt(skyhook.theft_vulnerability_end)} EVE", 'inline': True},
+            {'name': 'Reagents', 'value': _build_reagent_text(skyhook), 'inline': False},
+        ],
+        'footer': {'text': 'AA Skyhook Monitor'},
+    }
+    _send_discord({'content': '@here', 'embeds': [embed]})
+
+
+def _send_start_ping(skyhook):
+    embed = {
+        'title': '🚨 Skyhook VULNERABLE',
+        'color': 0xFF0000,
+        'fields': [
+            {'name': 'Corp', 'value': skyhook.owner.corporation.corporation_name, 'inline': True},
+            {'name': 'Planet', 'value': skyhook.planet_name, 'inline': True},
+            {'name': '\u200b', 'value': '\u200b', 'inline': False},
+            {'name': 'Vuln endet um', 'value': f"{_format_dt(skyhook.theft_vulnerability_end)} EVE", 'inline': True},
+            {'name': 'Reagents', 'value': _build_reagent_text(skyhook), 'inline': False},
+        ],
+        'footer': {'text': 'AA Skyhook Monitor'},
+    }
+    _send_discord({'content': '@everyone', 'embeds': [embed]})
+
+
+@shared_task
+def check_skyhook_notifications():
+    if not SkyhookConfiguration.get_webhook_url():
+        return
+    now = timezone.now()
+
+    # Vorwarnung: Vuln startet in 25-35 Minuten
+    warning_from = now + timedelta(minutes=25)
+    warning_to = now + timedelta(minutes=35)
+    for skyhook in Skyhook.objects.filter(
+        theft_vulnerability_start__gte=warning_from,
+        theft_vulnerability_start__lte=warning_to,
+        reagents__isnull=False,
+    ).exclude(notified_warning_for=F('theft_vulnerability_start')).distinct():
+        _send_warning_ping(skyhook)
+        skyhook.notified_warning_for = skyhook.theft_vulnerability_start
+        skyhook.save(update_fields=['notified_warning_for'])
+
+    # Start-Ping: Vuln hat gerade begonnen
+    for skyhook in Skyhook.objects.filter(
+        theft_vulnerability_start__lte=now,
+        theft_vulnerability_end__gte=now,
+        reagents__isnull=False,
+    ).exclude(notified_start_for=F('theft_vulnerability_start')).distinct():
+        _send_start_ping(skyhook)
+        skyhook.notified_start_for = skyhook.theft_vulnerability_start
+        skyhook.save(update_fields=['notified_start_for'])
 
 
 @shared_task

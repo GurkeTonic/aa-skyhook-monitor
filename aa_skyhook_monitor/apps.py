@@ -14,3 +14,7 @@ class AaSkyhookMonitorConfig(AppConfig):
             'task': 'aa_skyhook_monitor.tasks.update_all_skyhooks',
             'schedule': crontab(minute=0),
         }
+        current_app.conf.beat_schedule['aa_skyhook_monitor_check_notifications'] = {
+            'task': 'aa_skyhook_monitor.tasks.check_skyhook_notifications',
+            'schedule': crontab(minute='*/5'),
+        }

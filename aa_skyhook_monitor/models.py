@@ -5,6 +5,24 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 BAY_VOLUME_M3 = 10468
 
 
+class SkyhookConfiguration(models.Model):
+    discord_webhook_url = models.URLField(
+        blank=True,
+        help_text='Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)'
+    )
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self):
+        return 'Skyhook Monitor Konfiguration'
+
+    @classmethod
+    def get_webhook_url(cls):
+        config = cls.objects.first()
+        return config.discord_webhook_url if config and config.discord_webhook_url else None
+
+
 class SkyhookOwner(models.Model):
     corporation = models.OneToOneField(
         EveCorporationInfo, on_delete=models.CASCADE, related_name='skyhook_owner'
@@ -17,6 +35,10 @@ class SkyhookOwner(models.Model):
 
     class Meta:
         default_permissions = ()
+        permissions = (
+            ('view_skyhooks', 'Can view Skyhook bay contents'),
+            ('manage_skyhooks', 'Can add and remove corporations'),
+        )
 
     def __str__(self):
         return self.corporation.corporation_name
@@ -33,6 +55,8 @@ class Skyhook(models.Model):
     state = models.CharField(max_length=50, blank=True)
     theft_vulnerability_start = models.DateTimeField(null=True, blank=True)
     theft_vulnerability_end = models.DateTimeField(null=True, blank=True)
+    notified_warning_for = models.DateTimeField(null=True, blank=True)
+    notified_start_for = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         default_permissions = ()

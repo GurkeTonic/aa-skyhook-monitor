@@ -8,7 +8,9 @@
 {% block header_nav_collapse_left %}
 <ul class="navbar-nav me-auto">
     <li class="nav-item">
+        {% if perms.aa_skyhook_monitor.manage_skyhooks %}
         <a href="{% url 'aa_skyhook_monitor:add_owner' %}" class="btn btn-primary btn-sm ms-2">+ Corp hinzufügen</a>
+        {% endif %}
     </li>
 </ul>
 {% endblock %}
@@ -34,14 +36,13 @@
     {% else %}
     <table class="table table-sm table-hover align-middle">
         <colgroup>
-            <col style="width:14%">
-            <col style="width:12%">
-            <col style="width:14%">
-            <col style="width:16%">
-            <col style="width:16%">
+            <col style="width:15%">
+            <col style="width:13%">
+            <col style="width:15%">
+            <col style="width:17%">
+            <col style="width:17%">
             <col style="width:5%">
-            <col style="width:11%">
-            <col style="width:11%">
+            <col style="width:18%">
         </colgroup>
         <thead class="table-dark">
             <tr>
@@ -52,7 +53,6 @@
                 <th class="text-end">Secured Bay</th>
                 <th>Status</th>
                 <th class="text-center">Vuln Start</th>
-                <th class="text-center">Vuln End</th>
             </tr>
         </thead>
         <tbody>
@@ -88,11 +88,14 @@
                         <span class="badge bg-secondary">-</span>
                     {% endif %}
                 </td>
-                <td rowspan="{{ entry.reagents|length }}" class="text-center text-nowrap">
-                    {% if entry.skyhook.theft_vulnerability_start %}{{ entry.skyhook.theft_vulnerability_start|date:"d.m. H:i" }}{% else %}—{% endif %}
-                </td>
-                <td rowspan="{{ entry.reagents|length }}" class="text-center text-nowrap">
-                    {% if entry.skyhook.theft_vulnerability_end %}{{ entry.skyhook.theft_vulnerability_end|date:"d.m. H:i" }}{% else %}—{% endif %}
+                <td rowspan="{{ entry.reagents|length }}" class="text-center">
+                    {% if entry.skyhook.theft_vulnerability_start %}
+                        <span class="vuln-countdown" data-vuln="{{ entry.skyhook.theft_vulnerability_start|date:'c' }}">
+                            {{ entry.skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
+                        </span>
+                    {% else %}
+                        —
+                    {% endif %}
                 </td>
                 {% endif %}
             </tr>
@@ -102,4 +105,35 @@
     </table>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block extra_javascript %}
+<script>
+function updateCountdowns() {
+    document.querySelectorAll('.vuln-countdown').forEach(function(el) {
+        const vulnStart = new Date(el.dataset.vuln);
+        const now = new Date();
+        const diff = vulnStart - now;
+
+        const localDate = vulnStart.toLocaleDateString([], {day: '2-digit', month: '2-digit'});
+        const localTime = vulnStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+        const eveLine = '<small class="text-muted d-block">EVE ' + vulnStart.toISOString().substr(11,5) + '</small>';
+
+        if (diff <= 0) {
+            el.innerHTML = '<span class="badge bg-danger">Läuft</span>' + eveLine;
+            return;
+        }
+
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const countdown = hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'm';
+
+        el.innerHTML = localDate + ' ' + localTime +
+            '<br><small class="text-warning">in ' + countdown + '</small>' + eveLine;
+    });
+}
+
+updateCountdowns();
+setInterval(updateCountdowns, 30000);
+</script>
 {% endblock %}

@@ -1,6 +1,6 @@
 import logging
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import permission_required
 from django.db.models import F
 from django.shortcuts import redirect, render
 from esi.decorators import token_required
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 REQUIRED_SCOPES = ['esi-structures.read_corporation.v1']
 
 
-@login_required
+@permission_required('aa_skyhook_monitor.view_skyhooks')
 def index(request):
     skyhooks = (
         Skyhook.objects
@@ -31,7 +31,7 @@ def index(request):
     })
 
 
-@login_required
+@permission_required('aa_skyhook_monitor.manage_skyhooks')
 @token_required(scopes=REQUIRED_SCOPES)
 def add_owner(request, token):
     try:

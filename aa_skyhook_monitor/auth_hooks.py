@@ -3,14 +3,24 @@ from allianceauth.services.hooks import MenuItemHook, UrlHook
 import aa_skyhook_monitor.urls
 
 
+class SkyhookMenuItemHook(MenuItemHook):
+    def __init__(self):
+        super().__init__(
+            'Skyhook Monitor',
+            'fas fa-satellite fa-fw',
+            'aa_skyhook_monitor:index',
+            150
+        )
+
+    def render(self, request):
+        if request.user.has_perm('aa_skyhook_monitor.view_skyhooks'):
+            return MenuItemHook.render(self, request)
+        return ''
+
+
 @hooks.register('menu_item_hook')
 def register_menu():
-    return MenuItemHook(
-        'Skyhook Monitor',
-        'fas fa-satellite fa-fw',
-        'aa_skyhook_monitor:index',
-        150
-    )
+    return SkyhookMenuItemHook()
 
 
 @hooks.register('url_hook')

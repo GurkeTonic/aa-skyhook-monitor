@@ -1,5 +1,14 @@
 from django.contrib import admin
-from .models import SkyhookOwner, Skyhook, SkyhookReagent
+from .models import SkyhookConfiguration, SkyhookOwner, Skyhook, SkyhookReagent
+
+
+@admin.register(SkyhookConfiguration)
+class SkyhookConfigurationAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return not SkyhookConfiguration.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(SkyhookOwner)
@@ -17,5 +26,6 @@ class SkyhookOwnerAdmin(admin.ModelAdmin):
 
 @admin.register(Skyhook)
 class SkyhookAdmin(admin.ModelAdmin):
-    list_display = ['planet_name', 'owner', 'is_active']
-    readonly_fields = ['structure_id', 'planet_id', 'planet_name', 'is_active', 'owner']
+    list_display = ['planet_name', 'owner', 'is_active', 'theft_vulnerability_start']
+    readonly_fields = ['structure_id', 'planet_id', 'planet_name', 'is_active', 'state', 'owner',
+                       'theft_vulnerability_start', 'theft_vulnerability_end']
