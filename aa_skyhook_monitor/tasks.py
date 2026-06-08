@@ -1,18 +1,24 @@
-import logging
 import requests
 from celery import shared_task
 from datetime import timedelta
 
+from django.conf import settings
 from django.db.models import F
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from allianceauth.services.hooks import get_extension_logger
 from esi.models import Token
 from .models import SkyhookOwner, Skyhook, SkyhookReagent, SkyhookConfiguration
 
-logger = logging.getLogger(__name__)
+logger = get_extension_logger(__name__)
 REQUIRED_SCOPES = ['esi-structures.read_corporation.v1']
 ESI_BASE = 'https://esi.evetech.net'
 ESI_HEADERS = {'X-Compatibility-Date': '2026-05-19'}
+
+
+def _get_user_agent():
+    email = getattr(settings, 'ESI_USER_CONTACT_EMAIL', 'unknown@example.com')
+    return f'aa-skyhook-monitor/0.1.1 ({email}; +https://github.com/GurkeTonic/aa-skyhook-monitor)'
 
 
 def _get_type_info(type_id):
@@ -34,8 +40,12 @@ def _get_planet_name(planet_id):
 
 def _esi_get(path, token):
     url = f'{ESI_BASE}{path}'
-    headers = {**ESI_HEADERS, 'Authorization': f'Bearer {token.valid_access_token()}'}
-    resp = requests.get(url, headers=headers)
+    headers = {
+        **ESI_HEADERS,
+        'Authorization': f'Bearer {token.valid_access_token()}',
+        'User-Agent': _get_user_agent(),
+    }
+    resp = requests.get(url, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
 

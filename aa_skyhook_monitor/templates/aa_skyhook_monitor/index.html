@@ -117,7 +117,7 @@ function updateCountdowns() {
 
         const localDate = vulnStart.toLocaleDateString([], {day: '2-digit', month: '2-digit'});
         const localTime = vulnStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        const eveLine = '<small class="text-muted d-block">EVE ' + vulnStart.toISOString().substr(11,5) + '</small>';
+        const eveLine = '<small class="text-muted d-block">EVE ' + vulnStart.toISOString().substring(11, 16) + '</small>';
 
         if (diff <= 0) {
             el.innerHTML = '<span class="badge bg-danger">Läuft</span>' + eveLine;

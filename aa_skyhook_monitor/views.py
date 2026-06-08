@@ -1,14 +1,14 @@
-import logging
 from django.contrib import messages
 from django.contrib.auth.decorators import permission_required
 from django.db.models import F
 from django.shortcuts import redirect, render
-from esi.decorators import token_required
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
+from allianceauth.services.hooks import get_extension_logger
+from esi.decorators import token_required
 from .models import SkyhookOwner, Skyhook
+from .tasks import REQUIRED_SCOPES
 
-logger = logging.getLogger(__name__)
-REQUIRED_SCOPES = ['esi-structures.read_corporation.v1']
+logger = get_extension_logger(__name__)
 
 
 @permission_required('aa_skyhook_monitor.view_skyhooks')
