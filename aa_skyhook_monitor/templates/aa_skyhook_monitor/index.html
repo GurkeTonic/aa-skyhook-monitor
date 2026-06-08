@@ -1,10 +1,105 @@
 {% extends 'allianceauth/base-bs5.html' %}
+{% load humanize %}
 
 {% block page_title %}Skyhook Monitor{% endblock %}
 
+{% block header_nav_brand %}Skyhook Monitor{% endblock %}
+
+{% block header_nav_collapse_left %}
+<ul class="navbar-nav me-auto">
+    <li class="nav-item">
+        <a href="{% url 'aa_skyhook_monitor:add_owner' %}" class="btn btn-primary btn-sm ms-2">+ Corp hinzufügen</a>
+    </li>
+</ul>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
-    <h2>Skyhook Monitor</h2>
-    <p>Plugin geladen. ESI-Daten folgen.</p>
+    <p class="text-muted small mb-3">
+        {% for owner in owners %}
+            {{ owner.corporation.corporation_name }}:
+            {% if owner.last_updated %}
+                Sync {{ owner.last_updated|date:"d.m.Y H:i" }} UTC
+            {% else %}
+                noch kein Sync
+            {% endif %}
+            {% if not forloop.last %}&nbsp;&bull;&nbsp;{% endif %}
+        {% endfor %}
+    </p>
+
+    {% if not skyhook_data %}
+    <div class="alert alert-info">
+        Keine Daten vorhanden. Klicke auf <strong>Corp hinzufügen</strong> um eine Corp per ESI zu autorisieren.
+    </div>
+    {% else %}
+    <table class="table table-sm table-hover align-middle">
+        <colgroup>
+            <col style="width:14%">
+            <col style="width:12%">
+            <col style="width:14%">
+            <col style="width:16%">
+            <col style="width:16%">
+            <col style="width:5%">
+            <col style="width:11%">
+            <col style="width:11%">
+        </colgroup>
+        <thead class="table-dark">
+            <tr>
+                <th>Planet</th>
+                <th>Corp</th>
+                <th>Typ</th>
+                <th class="text-end">Unsecured Bay</th>
+                <th class="text-end">Secured Bay</th>
+                <th>Status</th>
+                <th class="text-center">Vuln Start</th>
+                <th class="text-center">Vuln End</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for entry in skyhook_data %}
+            {% for reagent in entry.reagents %}
+            <tr>
+                {% if forloop.first %}
+                <td rowspan="{{ entry.reagents|length }}">{{ entry.skyhook.planet_name }}</td>
+                <td rowspan="{{ entry.reagents|length }}">{{ entry.skyhook.owner.corporation.corporation_name }}</td>
+                {% endif %}
+                <td>{{ reagent.type_name }}</td>
+                <td class="text-end">
+                    {{ reagent.unsecured_stock|intcomma }}
+                    <div class="progress mt-1" style="height:4px">
+                        <div class="progress-bar bg-warning" style="width:{{ reagent.unsecured_pct }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ reagent.unsecured_m3|intcomma }} / 10.468 m³</small>
+                </td>
+                <td class="text-end">
+                    {{ reagent.secured_stock|intcomma }}
+                    <div class="progress mt-1" style="height:4px">
+                        <div class="progress-bar bg-success" style="width:{{ reagent.secured_pct }}%"></div>
+                    </div>
+                    <small class="text-muted">{{ reagent.secured_m3|intcomma }} / 10.468 m³</small>
+                </td>
+                {% if forloop.first %}
+                <td rowspan="{{ entry.reagents|length }}">
+                    {% if entry.skyhook.is_currently_vulnerable %}
+                        <span class="badge bg-danger">Vuln</span>
+                    {% elif entry.skyhook.is_active %}
+                        <span class="badge bg-success">OK</span>
+                    {% else %}
+                        <span class="badge bg-secondary">-</span>
+                    {% endif %}
+                </td>
+                <td rowspan="{{ entry.reagents|length }}" class="text-center text-nowrap">
+                    {% if entry.skyhook.theft_vulnerability_start %}{{ entry.skyhook.theft_vulnerability_start|date:"d.m. H:i" }}{% else %}—{% endif %}
+                </td>
+                <td rowspan="{{ entry.reagents|length }}" class="text-center text-nowrap">
+                    {% if entry.skyhook.theft_vulnerability_end %}{{ entry.skyhook.theft_vulnerability_end|date:"d.m. H:i" }}{% else %}—{% endif %}
+                </td>
+                {% endif %}
+            </tr>
+            {% endfor %}
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
 </div>
 {% endblock %}
