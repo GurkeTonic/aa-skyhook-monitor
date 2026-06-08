@@ -91,8 +91,8 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 
 | Notification | Trigger | Mention |
 |---|---|---|
-| ⏰ Warning ping | 30 minutes before vuln start | @here |
-| 🚨 Active ping | When vuln window opens | @everyone |
+| ⏰ Warning ping | 30 minutes before vuln start | here |
+| 🚨 Active ping | When vuln window opens | everyone |
 
 ---
 
