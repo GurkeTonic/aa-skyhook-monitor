@@ -1,8 +1,11 @@
+from email.utils import parsedate_to_datetime
+
 import requests
 from celery import shared_task
 from datetime import timedelta
 
 from django.conf import settings
+from django.core.cache import cache
 from django.db.models import F
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -18,7 +21,32 @@ ESI_HEADERS = {'X-Compatibility-Date': '2026-05-19'}
 
 def _get_user_agent():
     email = getattr(settings, 'ESI_USER_CONTACT_EMAIL', 'unknown@example.com')
-    return f'aa-skyhook-monitor/0.1.1 ({email}; +https://github.com/GurkeTonic/aa-skyhook-monitor)'
+    return f'aa-skyhook-monitor/0.1.2 ({email}; +https://github.com/GurkeTonic/aa-skyhook-monitor)'
+
+
+def _handle_esi_response(resp):
+    remain = int(resp.headers.get('X-ESI-Error-Limit-Remain', 100))
+    if remain < 10:
+        logger.warning(
+            'ESI error limit critical: %d remaining, resets in %ss',
+            remain, resp.headers.get('X-ESI-Error-Limit-Reset', '?'),
+        )
+    if resp.status_code == 429:
+        logger.warning('ESI rate limited (429), retry after %ss', resp.headers.get('Retry-After', '?'))
+    resp.raise_for_status()
+
+
+def _cache_with_expires(cache_key, data, resp_headers):
+    expires = resp_headers.get('Expires')
+    if expires:
+        try:
+            exp_dt = parsedate_to_datetime(expires)
+            ttl = max(60, int(exp_dt.timestamp() - timezone.now().timestamp()))
+            cache.set(cache_key, data, timeout=ttl)
+            return
+        except Exception:
+            pass
+    cache.set(cache_key, data, timeout=300)
 
 
 def _get_type_info(type_id):
@@ -39,15 +67,57 @@ def _get_planet_name(planet_id):
 
 
 def _esi_get(path, token):
-    url = f'{ESI_BASE}{path}'
+    cache_key = f'esi_skyhook_{token.character_id}_{path}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
     headers = {
         **ESI_HEADERS,
         'Authorization': f'Bearer {token.valid_access_token()}',
         'User-Agent': _get_user_agent(),
     }
-    resp = requests.get(url, headers=headers, timeout=30)
-    resp.raise_for_status()
-    return resp.json()
+    resp = requests.get(f'{ESI_BASE}{path}', headers=headers, timeout=30)
+    _handle_esi_response(resp)
+    data = resp.json()
+    _cache_with_expires(cache_key, data, resp.headers)
+    return data
+
+
+def _esi_get_pages(path, token):
+    results = []
+    page = 1
+    while True:
+        cache_key = f'esi_skyhook_{token.character_id}_{path}_p{page}'
+        cached = cache.get(cache_key)
+        if cached is not None:
+            data, total_pages = cached
+        else:
+            headers = {
+                **ESI_HEADERS,
+                'Authorization': f'Bearer {token.valid_access_token()}',
+                'User-Agent': _get_user_agent(),
+            }
+            resp = requests.get(
+                f'{ESI_BASE}{path}', headers=headers, params={'page': page}, timeout=30
+            )
+            _handle_esi_response(resp)
+            data = resp.json()
+            total_pages = int(resp.headers.get('X-Pages', 1))
+            expires = resp.headers.get('Expires')
+            ttl = 300
+            if expires:
+                try:
+                    exp_dt = parsedate_to_datetime(expires)
+                    ttl = max(60, int(exp_dt.timestamp() - timezone.now().timestamp()))
+                except Exception:
+                    pass
+            cache.set(cache_key, (data, total_pages), timeout=ttl)
+        if isinstance(data, list):
+            results.extend(data)
+        if page >= total_pages:
+            break
+        page += 1
+    return results
 
 
 def _format_dt(dt):
@@ -155,8 +225,7 @@ def update_owner_skyhooks(owner_pk):
         return
     corporation_id = owner.corporation.corporation_id
     try:
-        data = _esi_get(f'/corporations/{corporation_id}/structures/skyhooks', token)
-        skyhook_list = data.get('skyhooks', [])
+        skyhook_list = _esi_get_pages(f'/corporations/{corporation_id}/structures/skyhooks', token)
     except Exception as e:
         logger.error('Failed to fetch Skyhook list for %s: %s', owner, e)
         return
