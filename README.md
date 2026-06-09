@@ -10,18 +10,19 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 
 ## Features
 
-- Lists all active Skyhooks with reagent bay contents per corporation
+- Lists all active Skyhooks with **Magmatic Gas** and **Superionic Ice** reagent contents
 - Displays **Secured Bay** and **Unsecured Bay** stock with m³ capacity progress bars
-- Shows **Theft Vulnerability** start time in local browser time with live countdown
-- Status badge — live calculation whether a Skyhook is currently vulnerable
-- Table sorted by next upcoming vulnerability window
+- Shows **Theft Vulnerability** start time in local browser time with live second-by-second countdown
+- Table sorted by next upcoming vulnerability window — active windows first, expired last
+- Only Lava and Ice planet Skyhooks are tracked — irrelevant structures filtered out via EVE SDE
 - **Discord Webhook Notifications**
-  - @here ping 30 minutes before vulnerability starts
-  - @everyone ping when vulnerability window opens
+  - ⏰ @here ping 30 minutes before vulnerability starts
+  - 🚨 @everyone ping when vulnerability window opens
+  - Compact embed format with corp, planet, timer and reagent contents in one message
 - Automatic hourly Celery Beat sync — no manual `local.py` configuration required
-- Manual sync trigger via Django Admin
-- Planet and type names resolved from local EVE SDE
-- Role-based access control via Alliance Auth permissions
+- ESI response cache respected (1 hour TTL); expired vulnerability windows trigger an immediate cache bypass to pick up new schedules
+- Manual sync trigger and **Ping Test** action via Django Admin
+- Planet and type names resolved from local EVE SDE — no extra ESI calls needed
 
 ---
 
@@ -91,8 +92,10 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 
 | Notification | Trigger | Mention |
 |---|---|---|
-| ⏰ Warning ping | 30 minutes before vuln start | here |
-| 🚨 Active ping | When vuln window opens | everyone |
+| ⏰ Warning ping | 30 minutes before vuln start | @here |
+| 🚨 Active ping | When vuln window opens | @everyone |
+
+To verify the webhook is working, select the configuration in Django Admin and run the **Ping Test** action — it sends both embed variants with real data from the database.
 
 ---
 
@@ -109,17 +112,27 @@ Assign permissions via **Django Admin → Auth → Groups**.
 
 ## Admin
 
-Go to **Django Admin → Skyhook Monitor → Skyhook Owners**, select corporations and run the action **"Jetzt von ESI aktualisieren"** to trigger an immediate sync.
+### Skyhook Owners
+
+Select one or more owners and run **"Jetzt von ESI aktualisieren"** to trigger an immediate sync outside of the hourly schedule.
+
+### Skyhook Monitor Konfiguration
+
+| Action | Description |
+|---|---|
+| Ping Test | Sends both warning and active embed to the configured webhook using real database values |
+| Löschen | Removes the configuration |
 
 ---
 
 ## Technical Notes
 
-- ESI endpoint requires header `X-Compatibility-Date: 2026-05-19`
-- Detail calls are rate-limited to 15/minute to stay within ESI's `corp-structure` limit (300 per 15 minutes)
+- Only **Lava** (type 2015) and **Ice** (type 12) planet Skyhooks are fetched — determined via SDE before any ESI detail calls are made, reducing API usage from ~100+ to ~18 calls per sync
+- ESI detail endpoint cache TTL is 1 hour (`Cache-Control: max-age=3600`); when a vulnerability window has ended the cache entry is invalidated so the next task run picks up the new schedule immediately
+- Detail calls are rate-limited to 15/minute
 - Bay volume: 10,468 m³ per bay (secured and unsecured each)
 - Celery Beat schedules register automatically on app startup — no `CELERYBEAT_SCHEDULE` entries in `local.py` needed
-- Vulnerability countdown runs in the browser — displayed in the user's local timezone
+- Vulnerability countdown runs in the browser in the user's local timezone; page auto-reloads every 5 minutes to pick up task-updated data
 
 ---
 

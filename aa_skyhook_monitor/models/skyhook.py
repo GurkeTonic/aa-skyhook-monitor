@@ -1,21 +1,25 @@
+"""Skyhook Models"""
+
 from django.db import models
 from django.utils import timezone
+
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 
-BAY_VOLUME_M3 = 10468
+from aa_skyhook_monitor.constants import BAY_VOLUME_M3
+from aa_skyhook_monitor.managers import SkyhookManager
 
 
 class SkyhookConfiguration(models.Model):
     discord_webhook_url = models.URLField(
         blank=True,
-        help_text='Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)'
+        help_text="Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)",
     )
 
     class Meta:
         default_permissions = ()
 
     def __str__(self):
-        return 'Skyhook Monitor Konfiguration'
+        return "Skyhook Monitor Konfiguration"
 
     @classmethod
     def get_webhook_url(cls):
@@ -25,19 +29,21 @@ class SkyhookConfiguration(models.Model):
 
 class SkyhookOwner(models.Model):
     corporation = models.OneToOneField(
-        EveCorporationInfo, on_delete=models.CASCADE, related_name='skyhook_owner'
+        EveCorporationInfo, on_delete=models.CASCADE, related_name="skyhook_owner"
     )
     character = models.ForeignKey(
-        EveCharacter, on_delete=models.SET_NULL, null=True,
-        help_text='Charakter dessen ESI-Token für API-Abfragen genutzt wird'
+        EveCharacter,
+        on_delete=models.SET_NULL,
+        null=True,
+        help_text="Charakter dessen ESI-Token für API-Abfragen genutzt wird",
     )
     last_updated = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         default_permissions = ()
         permissions = (
-            ('view_skyhooks', 'Can view Skyhook bay contents'),
-            ('manage_skyhooks', 'Can add and remove corporations'),
+            ("view_skyhooks", "Can view Skyhook bay contents"),
+            ("manage_skyhooks", "Can add and remove corporations"),
         )
 
     def __str__(self):
@@ -46,7 +52,7 @@ class SkyhookOwner(models.Model):
 
 class Skyhook(models.Model):
     owner = models.ForeignKey(
-        SkyhookOwner, on_delete=models.CASCADE, related_name='skyhooks'
+        SkyhookOwner, on_delete=models.CASCADE, related_name="skyhooks"
     )
     structure_id = models.BigIntegerField(unique=True)
     planet_id = models.IntegerField(null=True, blank=True)
@@ -57,6 +63,8 @@ class Skyhook(models.Model):
     theft_vulnerability_end = models.DateTimeField(null=True, blank=True)
     notified_warning_for = models.DateTimeField(null=True, blank=True)
     notified_start_for = models.DateTimeField(null=True, blank=True)
+
+    objects = SkyhookManager()
 
     class Meta:
         default_permissions = ()
@@ -71,10 +79,21 @@ class Skyhook(models.Model):
         now = timezone.now()
         return self.theft_vulnerability_start <= now <= self.theft_vulnerability_end
 
+    @property
+    def vuln_is_expired(self):
+        if not self.theft_vulnerability_start:
+            return False
+        now = timezone.now()
+        if self.theft_vulnerability_start > now:
+            return False
+        if self.theft_vulnerability_end:
+            return self.theft_vulnerability_end < now
+        return True
+
 
 class SkyhookReagent(models.Model):
     skyhook = models.ForeignKey(
-        Skyhook, on_delete=models.CASCADE, related_name='reagents'
+        Skyhook, on_delete=models.CASCADE, related_name="reagents"
     )
     type_id = models.IntegerField()
     type_name = models.CharField(max_length=255, blank=True)
@@ -84,7 +103,7 @@ class SkyhookReagent(models.Model):
 
     class Meta:
         default_permissions = ()
-        unique_together = ('skyhook', 'type_id')
+        unique_together = ("skyhook", "type_id")
 
     @property
     def secured_m3(self):

@@ -1,3 +1,5 @@
+from django.utils.translation import gettext_lazy as _
+
 from allianceauth import hooks
 from allianceauth.services.hooks import MenuItemHook, UrlHook
 import aa_skyhook_monitor.urls
@@ -6,10 +8,11 @@ import aa_skyhook_monitor.urls
 class SkyhookMenuItemHook(MenuItemHook):
     def __init__(self):
         super().__init__(
-            'Skyhook Monitor',
+            _('Skyhook Monitor'),
             'fas fa-satellite fa-fw',
             'aa_skyhook_monitor:index',
-            150
+            150,
+            navactive=['aa_skyhook_monitor:'],
         )
 
     def render(self, request):

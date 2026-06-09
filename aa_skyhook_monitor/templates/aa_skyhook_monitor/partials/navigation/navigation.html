@@ -1,0 +1,7 @@
+<ul class="navbar-nav me-auto">
+    {% if perms.aa_skyhook_monitor.manage_skyhooks %}
+    <li class="nav-item">
+        <a href="{% url 'aa_skyhook_monitor:add_owner' %}" class="btn btn-primary btn-sm ms-2">+ Corp hinzufügen</a>
+    </li>
+    {% endif %}
+</ul>

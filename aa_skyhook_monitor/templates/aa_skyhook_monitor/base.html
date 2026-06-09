@@ -1,0 +1,28 @@
+{% extends 'allianceauth/base-bs5.html' %}
+{% load i18n %}
+
+{% block page_title %}
+    {% block page_template_title %}{% endblock page_template_title %} ⋗ Skyhook Monitor
+{% endblock page_title %}
+
+{% block header_nav_brand %}
+    <a class="nav-link text-white link-light link-underline link-underline-opacity-0" href="{% url 'aa_skyhook_monitor:index' %}">Skyhook Monitor</a>
+{% endblock header_nav_brand %}
+
+{% block header_nav_collapse_left %}
+    {% include 'aa_skyhook_monitor/partials/navigation/navigation.html' %}
+{% endblock header_nav_collapse_left %}
+
+{% block content %}
+    <div class="aa-skyhook-monitor">
+        {% block aaskyhookmonitor_block %}{% endblock aaskyhookmonitor_block %}
+    </div>
+{% endblock content %}
+
+{% block extra_css %}
+    {% include 'aa_skyhook_monitor/bundles/aa-skyhook-monitor-css.html' %}
+{% endblock extra_css %}
+
+{% block extra_javascript %}
+    {% include 'aa_skyhook_monitor/bundles/aa-skyhook-monitor-js.html' %}
+{% endblock extra_javascript %}

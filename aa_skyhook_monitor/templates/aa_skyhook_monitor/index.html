@@ -1,21 +1,9 @@
-{% extends 'allianceauth/base-bs5.html' %}
+{% extends 'aa_skyhook_monitor/base.html' %}
 {% load humanize %}
 
-{% block page_title %}Skyhook Monitor{% endblock %}
+{% block page_template_title %}Skyhook Monitor{% endblock page_template_title %}
 
-{% block header_nav_brand %}Skyhook Monitor{% endblock %}
-
-{% block header_nav_collapse_left %}
-<ul class="navbar-nav me-auto">
-    <li class="nav-item">
-        {% if perms.aa_skyhook_monitor.manage_skyhooks %}
-        <a href="{% url 'aa_skyhook_monitor:add_owner' %}" class="btn btn-primary btn-sm ms-2">+ Corp hinzufügen</a>
-        {% endif %}
-    </li>
-</ul>
-{% endblock %}
-
-{% block content %}
+{% block aaskyhookmonitor_block %}
 <div class="container-fluid">
     <p class="text-muted small mb-3">
         {% for owner in owners %}
@@ -39,10 +27,9 @@
             <col style="width:15%">
             <col style="width:13%">
             <col style="width:15%">
-            <col style="width:17%">
-            <col style="width:17%">
-            <col style="width:5%">
             <col style="width:18%">
+            <col style="width:18%">
+            <col style="width:21%">
         </colgroup>
         <thead class="table-dark">
             <tr>
@@ -51,7 +38,6 @@
                 <th>Typ</th>
                 <th class="text-end">Unsecured Bay</th>
                 <th class="text-end">Secured Bay</th>
-                <th>Status</th>
                 <th class="text-center">Vuln Start</th>
             </tr>
         </thead>
@@ -79,18 +65,11 @@
                     <small class="text-muted">{{ reagent.secured_m3|intcomma }} / 10.468 m³</small>
                 </td>
                 {% if forloop.first %}
-                <td rowspan="{{ entry.reagents|length }}">
-                    {% if entry.skyhook.is_currently_vulnerable %}
-                        <span class="badge bg-danger">Vuln</span>
-                    {% elif entry.skyhook.is_active %}
-                        <span class="badge bg-success">OK</span>
-                    {% else %}
-                        <span class="badge bg-secondary">-</span>
-                    {% endif %}
-                </td>
                 <td rowspan="{{ entry.reagents|length }}" class="text-center">
-                    {% if entry.skyhook.theft_vulnerability_start %}
-                        <span class="vuln-countdown" data-vuln="{{ entry.skyhook.theft_vulnerability_start|date:'c' }}">
+                    {% if entry.skyhook.theft_vulnerability_start and not entry.skyhook.vuln_is_expired %}
+                        <span class="vuln-countdown"
+                              data-vuln="{{ entry.skyhook.theft_vulnerability_start|date:'c' }}"
+                              {% if entry.skyhook.theft_vulnerability_end %}data-vuln-end="{{ entry.skyhook.theft_vulnerability_end|date:'c' }}"{% endif %}>
                             {{ entry.skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
                         </span>
                     {% else %}
@@ -105,35 +84,4 @@
     </table>
     {% endif %}
 </div>
-{% endblock %}
-
-{% block extra_javascript %}
-<script>
-function updateCountdowns() {
-    document.querySelectorAll('.vuln-countdown').forEach(function(el) {
-        const vulnStart = new Date(el.dataset.vuln);
-        const now = new Date();
-        const diff = vulnStart - now;
-
-        const localDate = vulnStart.toLocaleDateString([], {day: '2-digit', month: '2-digit'});
-        const localTime = vulnStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-        const eveLine = '<small class="text-muted d-block">EVE ' + vulnStart.toISOString().substring(11, 16) + '</small>';
-
-        if (diff <= 0) {
-            el.innerHTML = '<span class="badge bg-danger">Läuft</span>' + eveLine;
-            return;
-        }
-
-        const hours = Math.floor(diff / 3600000);
-        const minutes = Math.floor((diff % 3600000) / 60000);
-        const countdown = hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'm';
-
-        el.innerHTML = localDate + ' ' + localTime +
-            '<br><small class="text-warning">in ' + countdown + '</small>' + eveLine;
-    });
-}
-
-updateCountdowns();
-setInterval(updateCountdowns, 30000);
-</script>
-{% endblock %}
+{% endblock aaskyhookmonitor_block %}
