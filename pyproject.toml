@@ -44,7 +44,7 @@ aa_skyhook_monitor = "aa_skyhook_monitor.apps:AaSkyhookMonitorConfig"
 Homepage = "https://github.com/GurkeTonic/aa-skyhook-monitor"
 Source = "https://github.com/GurkeTonic/aa-skyhook-monitor"
 Tracker = "https://github.com/GurkeTonic/aa-skyhook-monitor/issues"
-Changelog = "https://github.com/GurkeTonic/aa-skyhook-monitor/blob/master/CHANGELOG.md"
+Changelog = "https://github.com/GurkeTonic/aa-skyhook-monitor/blob/main/CHANGELOG.md"
 
 [tool.hatch]
 build.include = [
