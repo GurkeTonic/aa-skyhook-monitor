@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 
@@ -12,7 +13,12 @@ from aa_skyhook_monitor.managers import SkyhookManager
 class SkyhookConfiguration(models.Model):
     discord_webhook_url = models.URLField(
         blank=True,
-        help_text="Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)",
+        help_text=_("Discord webhook URL for Skyhook notifications (empty = disabled)"),
+    )
+    last_full_sync = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text=_("Timestamp of the last full ESI sync run"),
     )
 
     class Meta:
@@ -22,9 +28,28 @@ class SkyhookConfiguration(models.Model):
         return "Skyhook Monitor Konfiguration"
 
     @classmethod
+    def solo(cls):
+        """Return the singleton config row, creating it if needed."""
+        config = cls.objects.first()
+        if config is None:
+            config = cls.objects.create()
+        return config
+
+    @classmethod
     def get_webhook_url(cls):
         config = cls.objects.first()
         return config.discord_webhook_url if config and config.discord_webhook_url else None
+
+    @classmethod
+    def mark_synced(cls):
+        config = cls.solo()
+        config.last_full_sync = timezone.now()
+        config.save(update_fields=["last_full_sync"])
+
+    @classmethod
+    def get_last_sync(cls):
+        config = cls.objects.first()
+        return config.last_full_sync if config else None
 
 
 class SkyhookOwner(models.Model):
@@ -35,7 +60,7 @@ class SkyhookOwner(models.Model):
         EveCharacter,
         on_delete=models.SET_NULL,
         null=True,
-        help_text="Charakter dessen ESI-Token für API-Abfragen genutzt wird",
+        help_text=_("Character whose ESI token is used for API queries"),
     )
     last_updated = models.DateTimeField(null=True, blank=True)
 

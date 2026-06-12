@@ -1,33 +1,56 @@
 # Changelog
 
+## [0.2.0] - 2026-06-12
+
+### Added
+
+- Single global "last sync" timestamp in the list view
+- i18n support (English source, German translation)
+- Standalone test project (`testauth/`) and task tests
+- Discord webhook retry with `429 Retry-After` handling
+- Dev tooling: pre-commit, tox, Makefile, flake8, editorconfig
+
+### Changed
+
+- ESI access switched to the django-esi OpenAPI client (caching, ETags, rate limiting)
+- Retry ESI tasks on rate/error limits, skip on `304 Not Modified`
+- Periodic tasks run under `QueueOnce`
+- Menu order set to `9999`
+- README aligned with code (GPL-3.0, Python ≥ 3.10, django-esi ≥ 4)
+
+### Fixed
+
+- Stale-skyhook pruning no longer deletes other owners' skyhooks
+- Admin "Ping Test" reuses the shared Discord sender
+
+### Removed
+
+- `setup.py`, unused `ESI_BASE` constant
+
 ## [0.1.3] - 2026-06-09
 
 ### Added
-- `pyproject.toml` (hatchling) als alleinige Packaging-Konfiguration
-- `app_settings.py` für konfigurierbare Task-Timeouts und Warning-Minuten
-- `constants.py` für ESI-Basis-URL, Reagent- und Planeten-Type-IDs sowie Bay-Volumen
-- `managers.py` mit `SkyhookManager` für Query-Optimierungen
-- `models/` als Package (ersetzt `models.py`)
-- Static Files und erweiterte Templates (base, bundles, partials)
-- `.github/` Workflow-Konfiguration
-- `runtests.py` und `tests/`-Verzeichnis
+
+- `pyproject.toml` (hatchling) as sole packaging config
+- `app_settings.py`, `constants.py`, `managers.py`
+- `models/` package, extended templates, static files
+- `runtests.py` and test suite
 
 ### Changed
-- ESI `_esi_get()`: X-Pages Pagination — alle Seiten werden jetzt abgerufen
-- `auth_hooks.py`: `navactive` ergänzt (aktives Nav-Highlighting), Label mit `gettext_lazy`
-- `pyproject.toml`: `requires-python` auf `>=3.10,<3.14` eingeschränkt
+
+- ESI listing: X-Pages pagination (fetch all pages)
+- `requires-python` set to `>=3.10,<3.14`
 
 ### Removed
-- `setup.cfg` (durch `pyproject.toml` ersetzt)
+
+- `setup.cfg`
 
 ## [0.1.0] - 2026-06-08
 
 ### Added
-- Initial release
-- Display Skyhook bay contents (secured/unsecured stock) per corporation
-- Progress bars showing bay fill level in m³
-- Theft vulnerability window display with local-time countdown
-- Discord webhook notifications: 30min warning (@here) and vulnerability start (@everyone)
-- Permission system: `view_skyhooks` and `manage_skyhooks`
-- Celery Beat tasks for automatic hourly sync and 5-minute notification checks
-- Django Admin configuration for Discord webhook URL
+
+- Initial release: per-corp Skyhook bay contents with m³ progress bars
+- Theft-vulnerability window with local-time countdown
+- Discord notifications (30-min warning, vulnerability start)
+- Permissions `view_skyhooks` / `manage_skyhooks`
+- Hourly Celery sync + 5-minute notification checks

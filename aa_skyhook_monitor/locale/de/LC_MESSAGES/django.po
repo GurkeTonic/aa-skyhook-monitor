@@ -1,0 +1,96 @@
+# German translation for aa-skyhook-monitor.
+# Copyright (C) 2026 GurkeTonic
+# This file is distributed under the same license as the aa-skyhook-monitor package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: aa-skyhook-monitor\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-06-12 16:03+0000\n"
+"PO-Revision-Date: 2026-06-12 17:30+0000\n"
+"Last-Translator: GurkeTonic\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "🔔 Send ping test"
+msgstr "🔔 Ping-Test senden"
+
+msgid "No skyhooks with reagents found."
+msgstr "Keine Skyhooks mit Reagenzien gefunden."
+
+msgid "No webhook configured."
+msgstr "Kein Webhook konfiguriert."
+
+#, python-format
+msgid "Test ping sent (Skyhook: %(planet)s)."
+msgstr "Test-Ping gesendet (Skyhook: %(planet)s)."
+
+#, python-format
+msgid "Webhook error: %(err)s"
+msgstr "Webhook-Fehler: %(err)s"
+
+msgid "Update from ESI now"
+msgstr "Jetzt von ESI aktualisieren"
+
+#, python-format
+msgid "%(count)d update(s) triggered."
+msgstr "%(count)d Aktualisierung(en) angestoßen."
+
+msgid "Skyhook Monitor"
+msgstr "Skyhook Monitor"
+
+msgid "Discord webhook URL for Skyhook notifications (empty = disabled)"
+msgstr ""
+"Discord-Webhook-URL für Skyhook-Benachrichtigungen (leer = deaktiviert)"
+
+msgid "Timestamp of the last full ESI sync run"
+msgstr "Zeitpunkt des letzten vollständigen ESI-Syncs"
+
+msgid "Character whose ESI token is used for API queries"
+msgstr "Charakter, dessen ESI-Token für API-Abfragen genutzt wird"
+
+#, python-format
+msgid "Last sync %(synced)s UTC"
+msgstr "Letzter Sync %(synced)s UTC"
+
+msgid "no sync yet"
+msgstr "noch kein Sync"
+
+msgid ""
+"No data yet. Use the Add Corporation button to authorize a corporation via "
+"ESI."
+msgstr ""
+"Noch keine Daten. Nutze den Button zum Hinzufügen einer Corp, um eine Corp "
+"per ESI zu autorisieren."
+
+msgid "Planet"
+msgstr "Planet"
+
+msgid "Corporation"
+msgstr "Corporation"
+
+msgid "Type"
+msgstr "Typ"
+
+msgid "Unsecured Bay"
+msgstr "Unsecured Bay"
+
+msgid "Secured Bay"
+msgstr "Secured Bay"
+
+msgid "Vuln Start"
+msgstr "Vuln-Start"
+
+msgid "Add Corporation"
+msgstr "Corp hinzufügen"
+
+msgid "Character not found in Auth."
+msgstr "Charakter nicht in Auth gefunden."
+
+#, python-format
+msgid "%(corp)s added to Skyhook Monitor."
+msgstr "%(corp)s zum Skyhook Monitor hinzugefügt."

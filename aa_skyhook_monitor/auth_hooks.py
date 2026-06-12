@@ -11,7 +11,7 @@ class SkyhookMenuItemHook(MenuItemHook):
             _('Skyhook Monitor'),
             'fas fa-satellite fa-fw',
             'aa_skyhook_monitor:index',
-            150,
+            9999,
             navactive=['aa_skyhook_monitor:'],
         )
 

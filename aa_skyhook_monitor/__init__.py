@@ -1,6 +1,6 @@
 """Initialize the app"""
 
-__version__ = "0.1.3"
+__version__ = "0.2.0"
 __title__ = "Skyhook Monitor"
 
 __package_name__ = "aa-skyhook-monitor"

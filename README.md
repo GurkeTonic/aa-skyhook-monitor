@@ -1,8 +1,8 @@
 # AA Skyhook Monitor
 
-[![Python](https://img.shields.io/badge/python-3.8+-blue)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.10+-blue)](https://www.python.org/)
 [![Alliance Auth](https://img.shields.io/badge/alliance--auth-5.1+-orange)](https://gitlab.com/allianceauth/allianceauth)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monitor Skyhook bay contents per corporation via ESI, with Discord webhook notifications for vulnerability windows.
 
@@ -31,7 +31,8 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 | Requirement | Version |
 |---|---|
 | Alliance Auth | >= 5.1.0 |
-| Python | >= 3.8 |
+| Python | >= 3.10 |
+| django-esi | >= 4 |
 | [django-eveonline-sde](https://github.com/nicoscha/django-eveonline-sde) | latest |
 
 ### ESI Scope
@@ -144,4 +145,4 @@ Pull requests are welcome. For major changes please open an issue first.
 
 ## License
 
-[MIT](LICENSE)
+[GPL-3.0-or-later](LICENSE)

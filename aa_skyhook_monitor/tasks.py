@@ -1,110 +1,78 @@
-from datetime import timedelta
-from email.utils import parsedate_to_datetime
+"""Celery tasks: ESI sync and Discord notifications.
+
+ESI access goes through the django-esi OpenAPI client (see ``providers.py``),
+which transparently handles caching, ETags, the floating-window rate limit,
+the global error limit, the User-Agent and the compatibility date.
+"""
+
+from datetime import datetime, timedelta
+from time import sleep
 
 import requests
 from celery import shared_task
 
-from django.conf import settings
-from django.core.cache import cache
 from django.db.models import F
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from allianceauth.services.hooks import get_extension_logger
+from allianceauth.services.tasks import QueueOnce
+from esi.exceptions import ESIBucketLimitException, ESIErrorLimitException, HTTPNotModified
 from esi.models import Token
 
-from aa_skyhook_monitor import __app_name_useragent__, __esi_compatibility_date__, __version__
 from aa_skyhook_monitor.app_settings import (
     SKYHOOK_MONITOR_TASKS_TIME_LIMIT,
     SKYHOOK_MONITOR_WARNING_MINUTES,
 )
 from aa_skyhook_monitor.constants import (
-    ESI_BASE,
     RELEVANT_PLANET_TYPE_IDS,
     RELEVANT_REAGENT_TYPE_IDS,
 )
-from .models import SkyhookOwner, Skyhook, SkyhookReagent, SkyhookConfiguration
+from aa_skyhook_monitor.providers import esi
+
+from .models import Skyhook, SkyhookConfiguration, SkyhookOwner, SkyhookReagent
 
 logger = get_extension_logger(__name__)
+
 REQUIRED_SCOPES = ["esi-structures.read_corporation.v1"]
-ESI_HEADERS = {"X-Compatibility-Date": __esi_compatibility_date__}
+
+# Transient ESI limits — let Celery retry with backoff instead of failing.
+ESI_RETRY = {
+    "autoretry_for": (ESIErrorLimitException, ESIBucketLimitException),
+    "retry_backoff": 30,
+    "retry_kwargs": {"max_retries": 3},
+}
 
 
-def _get_user_agent():
-    email = getattr(settings, "ESI_USER_CONTACT_EMAIL", "unknown@example.com")
-    return f"{__app_name_useragent__}/{__version__} ({email}; +https://github.com/GurkeTonic/aa-skyhook-monitor)"
-
-
-def _handle_esi_response(resp):
-    remain = int(resp.headers.get("X-ESI-Error-Limit-Remain", 100))
-    if remain <= 0:
-        reset = resp.headers.get("X-ESI-Error-Limit-Reset", "?")
-        logger.error("ESI error limit exhausted, resets in %ss — aborting", reset)
-        resp.raise_for_status()
-    if remain < 10:
-        logger.warning(
-            "ESI error limit critical: %d remaining, resets in %ss",
-            remain,
-            resp.headers.get("X-ESI-Error-Limit-Reset", "?"),
-        )
-    if resp.status_code == 429:
-        logger.warning("ESI rate limited (429), retry after %ss", resp.headers.get("Retry-After", "?"))
-    resp.raise_for_status()
-
-
-def _cache_with_expires(cache_key, data, resp_headers):
-    expires = resp_headers.get("Expires")
-    if expires:
-        try:
-            exp_dt = parsedate_to_datetime(expires)
-            ttl = max(60, int(exp_dt.timestamp() - timezone.now().timestamp()))
-            cache.set(cache_key, data, timeout=ttl)
-            return
-        except Exception:
-            pass
-    cache.set(cache_key, data, timeout=300)
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+def _to_dt(value):
+    """Return a datetime from an ESI value that may already be parsed or a string."""
+    if value is None or isinstance(value, datetime):
+        return value
+    return parse_datetime(str(value))
 
 
 def _get_type_info(type_id):
+    """Resolve (name, volume) of a type from the local EVE SDE."""
     try:
         from eve_sde.models import ItemType
-        t = ItemType.objects.get(id=type_id)
-        return t.name, t.volume
+
+        item = ItemType.objects.get(id=type_id)
+        return item.name, item.volume
     except Exception:
         return str(type_id), 0
 
 
 def _get_planet_name(planet_id):
+    """Resolve a planet name from the local EVE SDE."""
     try:
         from eve_sde.models import Planet
+
         return Planet.objects.get(id=planet_id).name
     except Exception:
         return str(planet_id)
-
-
-def _esi_get(path, token):
-    cache_key = f"esi_skyhook_{token.character_id}_{path}"
-    cached = cache.get(cache_key)
-    if cached is not None:
-        return cached
-    headers = {
-        **ESI_HEADERS,
-        "Authorization": f"Bearer {token.valid_access_token()}",
-        "User-Agent": _get_user_agent(),
-    }
-    resp = requests.get(f"{ESI_BASE}{path}", headers=headers, timeout=30)
-    _handle_esi_response(resp)
-    data = resp.json()
-    total_pages = int(resp.headers.get("X-Pages", 1))
-    if total_pages > 1 and isinstance(data, list):
-        for page in range(2, total_pages + 1):
-            paged_resp = requests.get(
-                f"{ESI_BASE}{path}", headers=headers, params={"page": page}, timeout=30
-            )
-            _handle_esi_response(paged_resp)
-            data.extend(paged_resp.json())
-    _cache_with_expires(cache_key, data, resp.headers)
-    return data
 
 
 def _format_dt(dt):
@@ -112,20 +80,35 @@ def _format_dt(dt):
 
 
 def _build_reagent_lines(skyhook):
-    lines = []
-    for r in skyhook.reagents.all():
-        lines.append(f"**{r.type_name}** · {r.unsecured_stock:,} unsec / {r.secured_stock:,} sec")
+    lines = [
+        f"**{r.type_name}** · {r.unsecured_stock:,} unsec / {r.secured_stock:,} sec"
+        for r in skyhook.reagents.all()
+    ]
     return "\n".join(lines) if lines else "—"
 
 
-def _send_discord(payload):
-    webhook_url = SkyhookConfiguration.get_webhook_url()
+def _send_discord(payload, webhook_url=None):
+    """Post a payload to a Discord webhook (with a small retry).
+
+    Falls back to the configured webhook when ``webhook_url`` is not given.
+    """
+    webhook_url = webhook_url or SkyhookConfiguration.get_webhook_url()
     if not webhook_url:
         return
-    try:
-        requests.post(webhook_url, json=payload, timeout=10)
-    except Exception as e:
-        logger.error("Discord webhook failed: %s", e)
+    for attempt in range(3):
+        try:
+            resp = requests.post(webhook_url, json=payload, timeout=10)
+            if resp.status_code == 429:
+                retry_after = float(resp.headers.get("Retry-After", 2))
+                logger.warning("Discord rate limited, retry after %ss", retry_after)
+                sleep(min(retry_after, 10))
+                continue
+            resp.raise_for_status()
+            return
+        except Exception as e:
+            logger.error("Discord webhook failed (attempt %d/3): %s", attempt + 1, e)
+            sleep(2 * (attempt + 1))
+    logger.error("Discord webhook giving up after 3 attempts")
 
 
 def _send_warning_ping(skyhook):
@@ -155,7 +138,10 @@ def _send_start_ping(skyhook):
     _send_discord({"content": "@everyone", "embeds": [embed]})
 
 
-@shared_task(time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+# ---------------------------------------------------------------------------
+# Notification task
+# ---------------------------------------------------------------------------
+@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
 def check_skyhook_notifications():
     if not SkyhookConfiguration.get_webhook_url():
         return
@@ -183,13 +169,18 @@ def check_skyhook_notifications():
         skyhook.save(update_fields=["notified_start_for"])
 
 
-@shared_task(time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+# ---------------------------------------------------------------------------
+# ESI sync tasks
+# ---------------------------------------------------------------------------
+@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
 def update_all_skyhooks():
     for owner_pk in SkyhookOwner.objects.values_list("pk", flat=True):
         update_owner_skyhooks.delay(owner_pk)
+    # Single, app-wide "last sync" marker shown in the UI.
+    SkyhookConfiguration.mark_synced()
 
 
-@shared_task(time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+@shared_task(time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT, **ESI_RETRY)
 def update_owner_skyhooks(owner_pk):
     try:
         owner = SkyhookOwner.objects.get(pk=owner_pk)
@@ -201,46 +192,57 @@ def update_owner_skyhooks(owner_pk):
         return
     corporation_id = owner.corporation.corporation_id
     try:
-        response = _esi_get(f"/corporations/{corporation_id}/structures/skyhooks", token)
+        result = esi.client.Structures.GetCorporationsStructuresSkyhooksListing(
+            corporation_id=corporation_id, token=token
+        ).result()
+    except HTTPNotModified:
+        logger.debug("Skyhook listing unchanged for %s", owner)
+        owner.last_updated = timezone.now()
+        owner.save(update_fields=["last_updated"])
+        return
+    except (ESIErrorLimitException, ESIBucketLimitException):
+        raise  # let autoretry handle it
     except Exception as e:
         logger.error("Failed to fetch Skyhook list for %s: %s", owner, e)
         return
-    if isinstance(response, dict):
-        skyhook_list = response.get("skyhooks", [])
-    else:
-        skyhook_list = response
+
+    skyhook_list = list(getattr(result, "skyhooks", None) or [])
     if not skyhook_list:
-        logger.warning("Empty skyhook list for %s — raw response: %s", owner, response)
+        logger.warning("Empty skyhook list for %s", owner)
         return
+
     from eve_sde.models import Planet as SdePlanet
 
+    candidate_planet_ids = [s.planet_id for s in skyhook_list if getattr(s, "planet_id", None)]
     relevant_planet_ids = set(
         SdePlanet.objects.filter(
-            id__in=[s["planet_id"] for s in skyhook_list if s.get("planet_id")],
+            id__in=candidate_planet_ids,
             item_type_id__in=RELEVANT_PLANET_TYPE_IDS,
         ).values_list("id", flat=True)
     )
     relevant_structure_ids = {
-        s["id"] for s in skyhook_list if s.get("planet_id") in relevant_planet_ids
+        s.id for s in skyhook_list if s.planet_id in relevant_planet_ids
     }
-    deleted, _ = Skyhook.objects.exclude(structure_id__in=relevant_structure_ids).delete()
+
+    # Only prune *this owner's* stale records — never touch other owners' skyhooks.
+    deleted, _ = (
+        Skyhook.objects.filter(owner=owner)
+        .exclude(structure_id__in=relevant_structure_ids)
+        .delete()
+    )
     if deleted:
         logger.info("Deleted %d irrelevant skyhook records for %s", deleted, owner)
-    for skyhook_data in skyhook_list:
-        planet_id = skyhook_data.get("planet_id")
-        if planet_id not in relevant_planet_ids:
+
+    for skyhook in skyhook_list:
+        if skyhook.planet_id not in relevant_planet_ids:
             continue
-        update_skyhook_detail.delay(
-            owner_pk,
-            corporation_id,
-            skyhook_data["id"],
-            planet_id,
-        )
+        update_skyhook_detail.delay(owner_pk, corporation_id, skyhook.id, skyhook.planet_id)
+
     owner.last_updated = timezone.now()
-    owner.save()
+    owner.save(update_fields=["last_updated"])
 
 
-@shared_task(rate_limit="15/m", time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+@shared_task(rate_limit="15/m", time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT, **ESI_RETRY)
 def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
     try:
         owner = SkyhookOwner.objects.get(pk=owner_pk)
@@ -249,45 +251,58 @@ def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
     token = Token.get_token(owner.character.character_id, REQUIRED_SCOPES)
     if not token:
         return
-    path = f"/corporations/{corporation_id}/structures/skyhooks/{skyhook_id}"
+
+    # If the stored vulnerability window has ended, bypass cache/ETag so we
+    # immediately pick up the new schedule.
+    force_refresh = False
     try:
         existing = Skyhook.objects.get(structure_id=skyhook_id)
         if existing.theft_vulnerability_end and existing.theft_vulnerability_end < timezone.now():
-            cache.delete(f"esi_skyhook_{token.character_id}_{path}")
+            force_refresh = True
     except Skyhook.DoesNotExist:
         pass
+
     try:
-        detail = _esi_get(path, token)
+        detail = esi.client.Structures.GetCorporationsStructuresSkyhooksDetail(
+            corporation_id=corporation_id, skyhook_id=skyhook_id, token=token
+        ).result(force_refresh=force_refresh)
+    except HTTPNotModified:
+        logger.debug("Skyhook detail %s unchanged", skyhook_id)
+        return
+    except (ESIErrorLimitException, ESIBucketLimitException):
+        raise
     except Exception as e:
         logger.error("Failed to fetch Skyhook detail %s: %s", skyhook_id, e)
         return
-    relevant_reagents = [
-        r for r in detail.get("reagents", []) if r["type_id"] in RELEVANT_REAGENT_TYPE_IDS
-    ]
+
+    reagents = list(getattr(detail, "reagents", None) or [])
+    relevant_reagents = [r for r in reagents if r.type_id in RELEVANT_REAGENT_TYPE_IDS]
     if not relevant_reagents:
         Skyhook.objects.filter(structure_id=skyhook_id).delete()
         return
-    vuln = detail.get("theft_vulnerability", {})
+
+    vuln = getattr(detail, "theft_vulnerability", None)
     skyhook, _ = Skyhook.objects.update_or_create(
         structure_id=skyhook_id,
         defaults={
             "owner": owner,
             "planet_id": planet_id,
             "planet_name": _get_planet_name(planet_id) if planet_id else "",
-            "is_active": detail.get("is_active", False),
-            "state": detail.get("state", ""),
-            "theft_vulnerability_start": parse_datetime(vuln["start"]) if vuln.get("start") else None,
-            "theft_vulnerability_end": parse_datetime(vuln["end"]) if vuln.get("end") else None,
+            "is_active": bool(getattr(detail, "is_active", False)),
+            "state": getattr(detail, "state", "") or "",
+            "theft_vulnerability_start": _to_dt(getattr(vuln, "start", None)) if vuln else None,
+            "theft_vulnerability_end": _to_dt(getattr(vuln, "end", None)) if vuln else None,
         },
     )
+
     skyhook.reagents.all().delete()
     for reagent in relevant_reagents:
-        type_name, type_volume = _get_type_info(reagent["type_id"])
+        type_name, type_volume = _get_type_info(reagent.type_id)
         SkyhookReagent.objects.create(
             skyhook=skyhook,
-            type_id=reagent["type_id"],
+            type_id=reagent.type_id,
             type_name=type_name,
             volume=type_volume,
-            secured_stock=reagent.get("secured_stock", 0),
-            unsecured_stock=reagent.get("unsecured_stock", 0),
+            secured_stock=getattr(reagent, "secured_stock", 0) or 0,
+            unsecured_stock=getattr(reagent, "unsecured_stock", 0) or 0,
         )
