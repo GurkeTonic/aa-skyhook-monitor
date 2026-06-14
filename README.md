@@ -26,7 +26,7 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 
 ### Raidable Skyhooks (public feed)
 
-- Lists all currently raidable Skyhooks across New Eden from the public ESI feed (`/skyhooks/raidable`)
+- Lists all currently raidable Skyhooks across New Eden from the public ESI feed
 - Refreshed every 5 minutes, no ESI token required
 - Filter by **region** and **constellation** (configured via admin dual-list)
 - **Discord Webhook Notifications** — alerts fire only for new entries, no duplicate pings after server restarts
@@ -137,7 +137,7 @@ Assign permissions via **Django Admin → Auth → Groups**.
 
 ### Skyhook Owners
 
-Select one or more owners and run **"Jetzt von ESI aktualisieren"** to trigger an immediate sync outside of the hourly schedule.
+Select one or more owners and run **"Update from ESI now"** to trigger an immediate sync outside of the hourly schedule.
 
 ### Raidable Skyhook List
 
@@ -148,7 +148,7 @@ Read-only inspection view showing all entries currently in the database with the
 | Action | Description |
 |---|---|
 | Ping Test | Sends both warning and active embed to the configured webhook using real database values |
-| Löschen | Removes the configuration |
+| Delete | Removes the configuration |
 
 Use the **Watched Regions** and **Watched Constellations** dual-list to restrict raidable alerts to specific areas. Leave both empty to receive alerts for all raidable Skyhooks.
 
@@ -175,5 +175,3 @@ Pull requests are welcome. For major changes please open an issue first.
 ## License
 
 [GPL-3.0-or-later](LICENSE)
-
-Copyright (C) 2026 GurkeTonic — contact: <pberbuir@googlemail.com>
