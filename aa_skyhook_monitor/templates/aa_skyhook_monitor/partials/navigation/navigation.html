@@ -1,8 +1,1 @@
-{% load i18n %}
-<ul class="navbar-nav ms-auto">
-    {% if perms.aa_skyhook_monitor.manage_skyhooks %}
-    <li class="nav-item">
-        <a href="{% url 'aa_skyhook_monitor:add_owner' %}" class="btn btn-primary btn-sm ms-2">+ {% translate "Add Corporation" %}</a>
-    </li>
-    {% endif %}
-</ul>
+{# Navigation is now rendered directly in base.html via header_nav_collapse_left / _right blocks. #}

@@ -1,5 +1,27 @@
 # Changelog
 
+## [Unreleased]
+
+## [0.3.0] - 2026-06-14
+
+### Added
+
+- Raidable Skyhooks page with live public ESI feed, refreshed every 5 minutes
+- Region and constellation filter for raidable alerts (configured in admin)
+- Discord webhook for raidable skyhook alerts
+- Raidable alerts sent once per entry, no duplicate pings after restart
+- Planet names shown for raidable entries
+- Navigation tabs for My Skyhooks and Raidable pages
+
+### Changed
+
+- Raidable data persists in database, no data loss on restart
+- Django 5.0, 5.1, 5.2 added to supported versions
+
+### Removed
+
+- Effective workforce and reinforcement timer fields
+
 ## [0.2.0] - 2026-06-12
 
 ### Added

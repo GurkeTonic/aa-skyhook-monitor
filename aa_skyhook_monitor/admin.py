@@ -1,12 +1,21 @@
 from django.contrib import admin, messages
 from django.utils.translation import gettext_lazy as _
 
-from .models import Skyhook, SkyhookConfiguration, SkyhookOwner, SkyhookReagent
+from .models import (
+    RaidableSkyhook,
+    RaidWatchConstellation,
+    RaidWatchRegion,
+    Skyhook,
+    SkyhookConfiguration,
+    SkyhookOwner,
+    SkyhookReagent,
+)
 
 
 @admin.register(SkyhookConfiguration)
 class SkyhookConfigurationAdmin(admin.ModelAdmin):
     actions = ["send_test_ping", "delete_selected"]
+    filter_horizontal = ("watched_regions", "watched_constellations")
 
     def has_add_permission(self, request):
         return not SkyhookConfiguration.objects.exists()
@@ -85,7 +94,7 @@ class SkyhookOwnerAdmin(admin.ModelAdmin):
 
 @admin.register(Skyhook)
 class SkyhookAdmin(admin.ModelAdmin):
-    list_display = ["planet_name", "owner", "is_active", "theft_vulnerability_start"]
+    list_display = ["planet_name", "owner", "is_active", "state", "theft_vulnerability_start"]
     list_filter = ["owner", "is_active"]
     readonly_fields = [
         "structure_id", "planet_id", "planet_name", "is_active", "state", "owner",
@@ -97,3 +106,25 @@ class SkyhookAdmin(admin.ModelAdmin):
 class SkyhookReagentAdmin(admin.ModelAdmin):
     list_display = ["skyhook", "type_name", "secured_stock", "unsecured_stock"]
     search_fields = ["type_name", "skyhook__planet_name"]
+
+
+@admin.register(RaidableSkyhook)
+class RaidableSkyhookAdmin(admin.ModelAdmin):
+    list_display = [
+        "region_name", "constellation_name", "solar_system_name",
+        "planet_name", "theft_vulnerability_start", "theft_vulnerability_end", "notified",
+    ]
+    list_filter = ["region_name", "constellation_name", "notified"]
+    search_fields = ["solar_system_name", "planet_name", "region_name", "constellation_name"]
+    ordering = ["theft_vulnerability_start"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+

@@ -1,0 +1,84 @@
+{% extends 'aa_skyhook_monitor/base.html' %}
+{% load i18n %}
+{% load humanize %}
+
+{% block page_template_title %}{% translate "Raidable Skyhooks" %}{% endblock page_template_title %}
+
+{% block aaskyhookmonitor_block %}
+<div class="container-fluid">
+    <p class="text-muted small mb-3">
+        {% if last_sync %}
+            {% blocktranslate with synced=last_sync|date:"d.m.Y H:i" %}Last sync {{ synced }} UTC{% endblocktranslate %}
+            · {% translate "updates every 5 minutes" %}
+        {% else %}
+            {% translate "No data yet — first sync pending." %}
+        {% endif %}
+    </p>
+
+    {% if not skyhooks %}
+    <div class="alert alert-info">
+        {% translate "No raidable Skyhooks found in the current ESI snapshot." %}
+    </div>
+    {% else %}
+    <table class="table table-sm table-hover align-middle" id="raidable-table">
+        <thead class="table-dark">
+            <tr>
+                <th>{% translate "Region" %}</th>
+                <th>{% translate "Constellation" %}</th>
+                <th>{% translate "System" %}</th>
+                <th class="text-center">{% translate "Sec" %}</th>
+                <th>{% translate "Planet" %}</th>
+                <th class="text-center">{% translate "Vuln Window" %}</th>
+                <th class="text-center">{% translate "Countdown" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for skyhook in skyhooks %}
+            {% if skyhook.is_currently_vulnerable %}
+            <tr class="table-danger">
+            {% elif skyhook.vuln_is_expired %}
+            <tr class="text-muted">
+            {% else %}
+            <tr>
+            {% endif %}
+                <td>{{ skyhook.region_name }}</td>
+                <td>{{ skyhook.constellation_name }}</td>
+                <td><strong>{{ skyhook.solar_system_name }}</strong></td>
+                <td class="text-center">
+                    {% if skyhook.security_status < -0.05 %}
+                        <span class="badge bg-danger">{{ skyhook.security_status|floatformat:1 }}</span>
+                    {% else %}
+                        <span class="badge bg-secondary">{{ skyhook.security_status|floatformat:1 }}</span>
+                    {% endif %}
+                </td>
+                <td><small class="text-muted">{{ skyhook.planet_name|default:skyhook.planet_id }}</small></td>
+                <td class="text-center">
+                    <small>
+                        {{ skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
+                        →
+                        {{ skyhook.theft_vulnerability_end|date:"H:i" }} UTC
+                    </small>
+                </td>
+                <td class="text-center">
+                    {% if skyhook.is_currently_vulnerable %}
+                        <span class="badge bg-danger">{% translate "ACTIVE" %}</span>
+                    {% elif skyhook.vuln_is_expired %}
+                        <span class="text-muted small">{% translate "expired" %}</span>
+                    {% else %}
+                        <span class="vuln-countdown"
+                              data-vuln="{{ skyhook.theft_vulnerability_start|date:'c' }}"
+                              data-vuln-end="{{ skyhook.theft_vulnerability_end|date:'c' }}">
+                            {{ skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
+                        </span>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <p class="text-muted small mt-2">
+        {% blocktranslate with count=skyhooks|length %}{{ count }} entries — source: public ESI endpoint, no authentication required.{% endblocktranslate %}
+    </p>
+    {% endif %}
+</div>
+{% endblock aaskyhookmonitor_block %}

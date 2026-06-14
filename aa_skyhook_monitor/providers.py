@@ -2,7 +2,10 @@
 
 A single, reusable ESI client for the whole app. Instantiated at import time
 (construction is lazy — the OpenAPI spec is only fetched on first ``.client``
-access). Filtered to the two Skyhook operations to keep memory low.
+access). Filtered to the Skyhook operations to keep memory low.
+
+Public endpoints (e.g. GetSkyhooksRaidable) are called without a token —
+the client still handles User-Agent, X-Compatibility-Date, ETags and rate limits.
 """
 
 from esi.openapi_clients import ESIClientProvider
@@ -22,5 +25,6 @@ esi = ESIClientProvider(
     operations=[
         "GetCorporationsStructuresSkyhooksListing",
         "GetCorporationsStructuresSkyhooksDetail",
+        "GetSkyhooksRaidable",
     ],
 )

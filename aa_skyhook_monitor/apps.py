@@ -25,3 +25,8 @@ class AaSkyhookMonitorConfig(AppConfig):
             "schedule": crontab(minute="*/5"),
             "apply_offset": True,
         }
+        current_app.conf.beat_schedule["aa_skyhook_monitor_update_raidable"] = {
+            "task": "aa_skyhook_monitor.tasks.update_raidable_skyhooks",
+            "schedule": crontab(minute="*/5"),
+            "apply_offset": True,
+        }

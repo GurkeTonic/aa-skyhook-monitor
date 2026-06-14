@@ -30,7 +30,15 @@ from aa_skyhook_monitor.constants import (
 )
 from aa_skyhook_monitor.providers import esi
 
-from .models import Skyhook, SkyhookConfiguration, SkyhookOwner, SkyhookReagent
+from .models import (
+    RaidableSkyhook,
+    RaidWatchConstellation,
+    RaidWatchRegion,
+    Skyhook,
+    SkyhookConfiguration,
+    SkyhookOwner,
+    SkyhookReagent,
+)
 
 logger = get_extension_logger(__name__)
 
@@ -306,3 +314,183 @@ def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
             secured_stock=getattr(reagent, "secured_stock", 0) or 0,
             unsecured_stock=getattr(reagent, "unsecured_stock", 0) or 0,
         )
+
+
+# ---------------------------------------------------------------------------
+# Public raidable-skyhooks task (no auth required)
+# ---------------------------------------------------------------------------
+@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+def update_raidable_skyhooks():
+    """Fetch the public /skyhooks/raidable endpoint and refresh the local cache.
+
+    Runs every 5 minutes (matching the ESI cache-age). The entire
+    RaidableSkyhook table is replaced atomically on each successful fetch.
+    No ESI token or scope required.
+    """
+    try:
+        result = esi.client.Skyhooks.GetSkyhooksRaidable().result()
+    except HTTPNotModified:
+        logger.debug("Raidable skyhooks unchanged (304)")
+        return
+    except (ESIErrorLimitException, ESIBucketLimitException):
+        raise
+    except Exception as exc:
+        logger.error("Failed to fetch raidable skyhooks: %s", exc)
+        return
+
+    raw_entries = list(getattr(result, "skyhooks", None) or [])
+    if not raw_entries:
+        logger.warning("Empty raidable skyhooks response")
+        return
+
+    try:
+        from eve_sde.models import SolarSystem
+    except ImportError:
+        logger.error("eve_sde not available — cannot resolve system names for raidable skyhooks")
+        return
+
+    system_ids = {e.solar_system_id for e in raw_entries}
+    systems = {
+        ss.id: ss
+        for ss in SolarSystem.objects.filter(id__in=system_ids).select_related(
+            "constellation__region"
+        )
+    }
+
+    planet_ids = {e.planet_id for e in raw_entries}
+    try:
+        from eve_sde.models import Planet as SdePlanet
+        planets = {p.id: p.name for p in SdePlanet.objects.filter(id__in=planet_ids)}
+    except Exception:
+        planets = {}
+
+    records = []
+    for entry in raw_entries:
+        solar_system = systems.get(entry.solar_system_id)
+        if not solar_system:
+            continue
+        vuln = getattr(entry, "theft_vulnerability", None)
+        records.append(
+            RaidableSkyhook(
+                planet_id=entry.planet_id,
+                planet_name=planets.get(entry.planet_id, ""),
+                solar_system_id=entry.solar_system_id,
+                solar_system_name=solar_system.name,
+                security_status=solar_system.security_status,
+                constellation_name=solar_system.constellation.name,
+                region_name=solar_system.constellation.region.name,
+                theft_vulnerability_start=_to_dt(getattr(vuln, "start", None)) if vuln else None,
+                theft_vulnerability_end=_to_dt(getattr(vuln, "end", None)) if vuln else None,
+            )
+        )
+
+    # Upsert — new windows are inserted, existing ones skipped (ignore_conflicts).
+    RaidableSkyhook.objects.bulk_create(records, ignore_conflicts=True)
+
+    # Prune entries whose vulnerability window has closed and are no longer in the feed.
+    feed_keys = {(r.planet_id, r.theft_vulnerability_start) for r in records}
+    now = timezone.now()
+    for stale in RaidableSkyhook.objects.filter(theft_vulnerability_end__lt=now):
+        if (stale.planet_id, stale.theft_vulnerability_start) not in feed_keys:
+            stale.delete()
+
+    SkyhookConfiguration.mark_raidable_synced()
+    logger.info("Synced raidable skyhooks (%d in feed, %d total in DB)",
+                len(records), RaidableSkyhook.objects.count())
+
+    _sync_raid_watchlist_options()
+    _notify_new_raidable_skyhooks()
+
+
+def _sync_raid_watchlist_options():
+    """Populate RaidWatchRegion / RaidWatchConstellation from the SDE.
+
+    Loads all nullsec constellations and their regions. Only adds new entries —
+    never deletes, so admin M2M selections are preserved.
+    """
+    try:
+        from eve_sde.models import Constellation as SdeConstellation
+    except ImportError:
+        logger.error("eve_sde not available — cannot populate raid watchlist options")
+        return
+
+    constellations = (
+        SdeConstellation.objects.filter(solarsystem__security_status__lt=-0.05)
+        .select_related("region")
+        .distinct()
+    )
+
+    existing_regions = set(RaidWatchRegion.objects.values_list("name", flat=True))
+    existing_consts = set(RaidWatchConstellation.objects.values_list("name", flat=True))
+
+    new_regions = []
+    new_consts = []
+    seen_regions = set()
+
+    for const in constellations:
+        region_name = const.region.name
+        if region_name not in existing_regions and region_name not in seen_regions:
+            new_regions.append(RaidWatchRegion(name=region_name))
+            seen_regions.add(region_name)
+        if const.name not in existing_consts:
+            new_consts.append(
+                RaidWatchConstellation(name=const.name, region_name=region_name)
+            )
+            existing_consts.add(const.name)
+
+    if new_regions:
+        RaidWatchRegion.objects.bulk_create(new_regions, ignore_conflicts=True)
+        logger.info("Added %d new watchlist regions", len(new_regions))
+    if new_consts:
+        RaidWatchConstellation.objects.bulk_create(new_consts, ignore_conflicts=True)
+        logger.info("Added %d new watchlist constellations", len(new_consts))
+
+
+def _notify_new_raidable_skyhooks():
+    """Ping Discord for raidable skyhooks that haven't been notified yet.
+
+    Applies the watched_regions / watched_constellations filter — only sends
+    pings for skyhooks that would also appear on the filtered raidable view.
+    Groups all new entries into a single Discord message.
+    """
+    config = SkyhookConfiguration.objects.first()
+    webhook_url = config.raidable_webhook_url if config else None
+    if not webhook_url:
+        return
+
+    from django.db.models import Q
+
+    watched_regions = list(config.watched_regions.values_list("name", flat=True))
+    watched_constellations = list(config.watched_constellations.values_list("name", flat=True))
+
+    new_skyhooks = RaidableSkyhook.objects.filter(notified=False)
+    if watched_regions or watched_constellations:
+        new_skyhooks = new_skyhooks.filter(
+            Q(region_name__in=watched_regions)
+            | Q(constellation_name__in=watched_constellations)
+        )
+    new_skyhooks = list(new_skyhooks)
+
+    if not new_skyhooks:
+        return
+
+    lines = []
+    for s in new_skyhooks:
+        start = _format_dt(s.theft_vulnerability_start)
+        end = _format_dt(s.theft_vulnerability_end)
+        lines.append(
+            f"**{s.region_name}** · {s.constellation_name} · {s.solar_system_name}"
+            f" · {s.planet_name or s.planet_id}\n`{start} → {end} EVE`"
+        )
+
+    description = "\n\n".join(lines)
+    embed = {
+        "title": f"🎯 {len(new_skyhooks)} raidbare Skyhook(s) verfügbar",
+        "color": 0x3498DB,
+        "description": description,
+        "footer": {"text": "AA Skyhook Monitor · Raidable"},
+    }
+    _send_discord({"embeds": [embed]}, webhook_url=webhook_url)
+    logger.info("Sent raidable notification for %d new skyhooks", len(new_skyhooks))
+
+    RaidableSkyhook.objects.filter(pk__in=[s.pk for s in new_skyhooks]).update(notified=True)

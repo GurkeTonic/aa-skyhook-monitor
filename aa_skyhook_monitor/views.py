@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import permission_required
+from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
 
@@ -7,7 +8,7 @@ from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from allianceauth.services.hooks import get_extension_logger
 from esi.decorators import token_required
 
-from .models import Skyhook, SkyhookConfiguration, SkyhookOwner
+from .models import RaidableSkyhook, Skyhook, SkyhookConfiguration, SkyhookOwner
 from .tasks import REQUIRED_SCOPES
 
 logger = get_extension_logger(__name__)
@@ -30,6 +31,34 @@ def index(request):
         {
             "skyhook_data": skyhook_data,
             "last_sync": SkyhookConfiguration.get_last_sync(),
+        },
+    )
+
+
+@permission_required("aa_skyhook_monitor.view_skyhooks")
+def raidable(request):
+    config = SkyhookConfiguration.objects.first()
+    watched_regions = (
+        list(config.watched_regions.values_list("name", flat=True)) if config else []
+    )
+    watched_constellations = (
+        list(config.watched_constellations.values_list("name", flat=True)) if config else []
+    )
+
+    skyhooks = RaidableSkyhook.objects.order_by("theft_vulnerability_start")
+    if watched_regions or watched_constellations:
+        skyhooks = skyhooks.filter(
+            Q(region_name__in=watched_regions)
+            | Q(constellation_name__in=watched_constellations)
+        )
+
+    return render(
+        request,
+        "aa_skyhook_monitor/raidable.html",
+        {
+            "skyhooks": skyhooks,
+            "last_sync": SkyhookConfiguration.get_raidable_last_sync(),
+            "is_filtered": bool(watched_regions or watched_constellations),
         },
     )
 
