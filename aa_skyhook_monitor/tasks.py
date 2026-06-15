@@ -357,7 +357,7 @@ def update_raidable_skyhooks():
     No ESI token or scope required.
     """
     try:
-        result = esi.client.Skyhooks.GetSkyhooksRaidable().result()
+        result = esi.client.Activities.GetSkyhooksRaidable().result()
     except HTTPNotModified:
         logger.debug("Raidable skyhooks unchanged (304)")
         return
