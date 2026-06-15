@@ -1,7 +1,5 @@
 """Constants"""
 
-from aa_skyhook_monitor import __title__, __version__
-
 BAY_VOLUME_M3 = 10468
 
 RELEVANT_REAGENT_TYPE_IDS = {81143, 81144}

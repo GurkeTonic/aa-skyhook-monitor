@@ -218,7 +218,13 @@ def update_owner_skyhooks(owner_pk):
             corporation_id=corporation_id, token=token
         ).result()
     except HTTPNotModified:
-        logger.debug("Skyhook listing unchanged for %s", owner)
+        # Listing unchanged (same structure IDs), but detail data (vuln windows,
+        # state) may have changed — dispatch detail tasks for all known skyhooks.
+        logger.debug("Skyhook listing unchanged for %s, refreshing details", owner)
+        for skyhook in Skyhook.objects.filter(owner=owner):
+            update_skyhook_detail.delay(
+                owner.pk, corporation_id, skyhook.structure_id, skyhook.planet_id
+            )
         owner.last_updated = timezone.now()
         owner.save(update_fields=["last_updated"])
         return

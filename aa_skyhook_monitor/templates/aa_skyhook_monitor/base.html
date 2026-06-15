@@ -12,13 +12,13 @@
 {% block header_nav_collapse_left %}
     <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.url_name == 'index' %}active text-white{% else %}text-white-50{% endif %}"
-           href="{% url 'aa_skyhook_monitor:index' %}">
+            href="{% url 'aa_skyhook_monitor:index' %}">
             {% translate "My Skyhooks" %}
         </a>
     </li>
     <li class="nav-item">
         <a class="nav-link {% if request.resolver_match.url_name == 'raidable' %}active text-white{% else %}text-white-50{% endif %}"
-           href="{% url 'aa_skyhook_monitor:raidable' %}">
+            href="{% url 'aa_skyhook_monitor:raidable' %}">
             {% translate "Raidable" %}
         </a>
     </li>

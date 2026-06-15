@@ -65,8 +65,8 @@
                 <td rowspan="{{ entry.reagents|length }}" class="text-center">
                     {% if entry.skyhook.theft_vulnerability_start and not entry.skyhook.vuln_is_expired %}
                         <span class="vuln-countdown"
-                              data-vuln="{{ entry.skyhook.theft_vulnerability_start|date:'c' }}"
-                              {% if entry.skyhook.theft_vulnerability_end %}data-vuln-end="{{ entry.skyhook.theft_vulnerability_end|date:'c' }}"{% endif %}>
+                            data-vuln="{{ entry.skyhook.theft_vulnerability_start|date:'c' }}"
+                            {% if entry.skyhook.theft_vulnerability_end %}data-vuln-end="{{ entry.skyhook.theft_vulnerability_end|date:'c' }}"{% endif %}>
                             {{ entry.skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
                         </span>
                     {% else %}

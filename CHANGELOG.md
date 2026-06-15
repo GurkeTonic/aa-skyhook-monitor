@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-06-15
+
+### Fixed
+
+- Skyhook vuln timers and state no longer stuck after window expiry: ESI detail tasks now run even when the listing returns 304
+
 ## [0.3.2] - 2026-06-15
 
 ### Fixed

@@ -3,7 +3,6 @@
 from datetime import timedelta
 from unittest.mock import MagicMock
 
-from allianceauth.tests.auth_utils import AuthUtils
 from django.test import TestCase
 from django.utils import timezone
 

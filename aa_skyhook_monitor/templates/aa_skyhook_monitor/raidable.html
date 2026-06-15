@@ -66,8 +66,8 @@
                         <span class="text-muted small">{% translate "expired" %}</span>
                     {% else %}
                         <span class="vuln-countdown"
-                              data-vuln="{{ skyhook.theft_vulnerability_start|date:'c' }}"
-                              data-vuln-end="{{ skyhook.theft_vulnerability_end|date:'c' }}">
+                            data-vuln="{{ skyhook.theft_vulnerability_start|date:'c' }}"
+                            data-vuln-end="{{ skyhook.theft_vulnerability_end|date:'c' }}">
                             {{ skyhook.theft_vulnerability_start|date:"d.m. H:i" }}
                         </span>
                     {% endif %}
