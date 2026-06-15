@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-06-15
+
+### Fixed
+
+- Raidable skyhooks task now correctly calls `Activities.GetSkyhooksRaidable` (was `Skyhooks`)
+
 ## [0.3.1] - 2026-06-15
 
 ### Fixed
