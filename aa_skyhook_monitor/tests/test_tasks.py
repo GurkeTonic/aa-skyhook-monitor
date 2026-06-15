@@ -5,19 +5,18 @@ from datetime import timedelta
 from types import SimpleNamespace
 from unittest import mock
 
+from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from django.test import TestCase
 from django.utils import timezone
-
-from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from esi.exceptions import HTTPNotModified
 
+from aa_skyhook_monitor import tasks
 from aa_skyhook_monitor.models import (
     Skyhook,
     SkyhookConfiguration,
     SkyhookOwner,
     SkyhookReagent,
 )
-from aa_skyhook_monitor import tasks
 
 
 def _make_owner(corp_id=2001, char_id=90000001):
@@ -77,7 +76,9 @@ class TestUpdateOwnerSkyhooks(TestCase):
         Skyhook.objects.create(owner=self.owner, structure_id=9999, planet_id=40001)
         # Another owner's skyhook must survive.
         other = _make_owner(corp_id=2002, char_id=90000002)
-        survivor = Skyhook.objects.create(owner=other, structure_id=8888, planet_id=40001)
+        survivor = Skyhook.objects.create(
+            owner=other, structure_id=8888, planet_id=40001
+        )
 
         listing = mock_esi.client.Structures.GetCorporationsStructuresSkyhooksListing
         listing.return_value.result.return_value = SimpleNamespace(
@@ -103,7 +104,9 @@ class TestUpdateOwnerSkyhooks(TestCase):
     def test_not_modified_skips_without_error(self, mock_token, mock_esi):
         mock_token.return_value = mock.MagicMock()
         listing = mock_esi.client.Structures.GetCorporationsStructuresSkyhooksListing
-        listing.return_value.result.side_effect = HTTPNotModified(status_code=304, headers={})
+        listing.return_value.result.side_effect = HTTPNotModified(
+            status_code=304, headers={}
+        )
 
         tasks.update_owner_skyhooks(self.owner.pk)
 
@@ -120,7 +123,9 @@ class TestUpdateSkyhookDetail(TestCase):
             is_active=True,
             state="active",
             reagents=[
-                SimpleNamespace(type_id=reagent_type, secured_stock=100, unsecured_stock=50)
+                SimpleNamespace(
+                    type_id=reagent_type, secured_stock=100, unsecured_stock=50
+                )
             ],
             theft_vulnerability=SimpleNamespace(start=start, end=end),
         )
@@ -181,7 +186,9 @@ class TestUpdateSkyhookDetail(TestCase):
 class TestNotifications(TestCase):
     def setUp(self):
         self.owner = _make_owner()
-        SkyhookConfiguration.objects.create(discord_webhook_url="https://discord.test/webhook")
+        SkyhookConfiguration.objects.create(
+            discord_webhook_url="https://discord.test/webhook"
+        )
 
     def _vulnerable_skyhook(self, start, end):
         sk = Skyhook.objects.create(
@@ -193,15 +200,21 @@ class TestNotifications(TestCase):
             theft_vulnerability_end=end,
         )
         SkyhookReagent.objects.create(
-            skyhook=sk, type_id=81143, type_name="Magmatic Gas",
-            volume=0.15, secured_stock=100, unsecured_stock=50,
+            skyhook=sk,
+            type_id=81143,
+            type_name="Magmatic Gas",
+            volume=0.15,
+            secured_stock=100,
+            unsecured_stock=50,
         )
         return sk
 
     @mock.patch.object(tasks, "_send_discord")
     def test_warning_ping_sent_once(self, mock_send):
         now = timezone.now()
-        sk = self._vulnerable_skyhook(now + timedelta(minutes=30), now + timedelta(minutes=90))
+        sk = self._vulnerable_skyhook(
+            now + timedelta(minutes=30), now + timedelta(minutes=90)
+        )
 
         tasks.check_skyhook_notifications()
         tasks.check_skyhook_notifications()  # second run must not re-send
@@ -213,7 +226,9 @@ class TestNotifications(TestCase):
     @mock.patch.object(tasks, "_send_discord")
     def test_start_ping_when_window_open(self, mock_send):
         now = timezone.now()
-        self._vulnerable_skyhook(now - timedelta(minutes=5), now + timedelta(minutes=55))
+        self._vulnerable_skyhook(
+            now - timedelta(minutes=5), now + timedelta(minutes=55)
+        )
 
         tasks.check_skyhook_notifications()
 
@@ -222,7 +237,9 @@ class TestNotifications(TestCase):
 
 class TestDiscordRetry(TestCase):
     def setUp(self):
-        SkyhookConfiguration.objects.create(discord_webhook_url="https://discord.test/webhook")
+        SkyhookConfiguration.objects.create(
+            discord_webhook_url="https://discord.test/webhook"
+        )
 
     @mock.patch("aa_skyhook_monitor.tasks.sleep", return_value=None)
     @mock.patch("aa_skyhook_monitor.tasks.requests.post")

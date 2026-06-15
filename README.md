@@ -6,7 +6,7 @@
 
 An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monitor Skyhook bay contents per corporation via ESI, with Discord webhook notifications for vulnerability windows. Also tracks publicly raidable Skyhooks across New Eden with optional region/constellation filtering and Discord alerts.
 
----
+______________________________________________________________________
 
 ## Features
 
@@ -32,106 +32,120 @@ An [Alliance Auth](https://gitlab.com/allianceauth/allianceauth) plugin to monit
 - **Discord Webhook Notifications** — alerts fire only for new entries, no duplicate pings after server restarts
 - Admin read-only view for inspecting raidable entries and notification state
 
----
+______________________________________________________________________
 
 ## Requirements
 
-| Requirement | Version |
-|---|---|
-| Alliance Auth | >= 5.1.0 |
-| Python | >= 3.10 |
-| django-esi | >= 4 |
-| [django-eveonline-sde](https://github.com/nicoscha/django-eveonline-sde) | latest |
+| Requirement                                                              | Version  |
+| ------------------------------------------------------------------------ | -------- |
+| Alliance Auth                                                            | >= 5.1.0 |
+| Python                                                                   | >= 3.10  |
+| django-esi                                                               | >= 4     |
+| [django-eveonline-sde](https://github.com/nicoscha/django-eveonline-sde) | latest   |
 
 ### ESI Scope
 
-| Scope | Endpoint |
-|---|---|
+| Scope                                | Endpoint                     |
+| ------------------------------------ | ---------------------------- |
 | `esi-structures.read_corporation.v1` | Skyhook list and bay details |
 
 > The character used to authorize a corporation must have the in-game **Station Manager** role.
 >
 > The raidable feed uses a public ESI endpoint — no scope or token needed.
 
----
+______________________________________________________________________
 
 ## Installation
 
 **Step 1 — Install the package**
 
-    pip install git+https://github.com/GurkeTonic/aa-skyhook-monitor.git
+```
+pip install git+https://github.com/GurkeTonic/aa-skyhook-monitor.git
+```
 
 **Step 2 — Install EVE SDE (if not already present)**
 
-    pip install django-eveonline-sde
+```
+pip install django-eveonline-sde
+```
 
 **Step 3 — Add to `INSTALLED_APPS` in `local.py`**
 
-    INSTALLED_APPS += [
-        'aa_skyhook_monitor',
-        'eve_sde',
-    ]
+```
+INSTALLED_APPS += [
+    'aa_skyhook_monitor',
+    'eve_sde',
+]
+```
 
 **Step 4 — Add your contact email to `local.py` (required by CCP)**
 
-    ESI_USER_CONTACT_EMAIL = "you@example.com"
+```
+ESI_USER_CONTACT_EMAIL = "you@example.com"
+```
 
 **Step 5 — Run migrations and collect static**
 
-    python manage.py migrate
-    python manage.py collectstatic
+```
+python manage.py migrate
+python manage.py collectstatic
+```
 
 **Step 6 — Load SDE data**
 
-    python manage.py esde_load_sde
+```
+python manage.py esde_load_sde
+```
 
 **Step 7 — Restart services**
 
-    sudo supervisorctl restart myauth:
+```
+sudo supervisorctl restart myauth:
+```
 
----
+______________________________________________________________________
 
 ## Setup
 
 1. Open **Skyhook Monitor** in the Alliance Auth navigation menu
-2. Click **+ Corp hinzufügen** and authenticate with a character that has the **Station Manager** role in the target corporation
-3. The first automatic sync runs within the hour, or trigger it manually via Django Admin
+1. Click **+ Corp hinzufügen** and authenticate with a character that has the **Station Manager** role in the target corporation
+1. The first automatic sync runs within the hour, or trigger it manually via Django Admin
 
----
+______________________________________________________________________
 
 ## Discord Notifications (optional)
 
 ### My Skyhooks
 
 1. Create a Webhook in your Discord server (Channel Settings → Integrations → Webhooks)
-2. Go to **Django Admin → Skyhook Monitor → Skyhook Monitor Konfiguration → Add**
-3. Enter the Webhook URL in the **Discord Webhook URL** field and save
+1. Go to **Django Admin → Skyhook Monitor → Skyhook Monitor Konfiguration → Add**
+1. Enter the Webhook URL in the **Discord Webhook URL** field and save
 
-| Notification | Trigger | Mention |
-|---|---|---|
-| ⏰ Warning ping | 30 minutes before vuln start | @here |
-| 🚨 Active ping | When vuln window opens | @everyone |
+| Notification    | Trigger                      | Mention   |
+| --------------- | ---------------------------- | --------- |
+| ⏰ Warning ping | 30 minutes before vuln start | @here     |
+| 🚨 Active ping  | When vuln window opens       | @everyone |
 
 To verify the webhook is working, select the configuration in Django Admin and run the **Ping Test** action.
 
 ### Raidable Skyhooks
 
 1. Enter a second Webhook URL in the **Raidable Webhook URL** field of the same configuration
-2. Optionally select **Watched Regions** and/or **Watched Constellations** to limit which alerts fire
-3. Alerts are sent once per raidable entry — the `notified` flag persists across restarts
+1. Optionally select **Watched Regions** and/or **Watched Constellations** to limit which alerts fire
+1. Alerts are sent once per raidable entry — the `notified` flag persists across restarts
 
----
+______________________________________________________________________
 
 ## Permissions
 
-| Permission | Description |
-|---|---|
-| `view_skyhooks` | Can view Skyhook bay contents and the raidable feed |
-| `manage_skyhooks` | Can add and remove corporations |
+| Permission        | Description                                         |
+| ----------------- | --------------------------------------------------- |
+| `view_skyhooks`   | Can view Skyhook bay contents and the raidable feed |
+| `manage_skyhooks` | Can add and remove corporations                     |
 
 Assign permissions via **Django Admin → Auth → Groups**.
 
----
+______________________________________________________________________
 
 ## Admin
 
@@ -145,14 +159,14 @@ Read-only inspection view showing all entries currently in the database with the
 
 ### Skyhook Monitor Konfiguration
 
-| Action | Description |
-|---|---|
+| Action    | Description                                                                              |
+| --------- | ---------------------------------------------------------------------------------------- |
 | Ping Test | Sends both warning and active embed to the configured webhook using real database values |
-| Delete | Removes the configuration |
+| Delete    | Removes the configuration                                                                |
 
 Use the **Watched Regions** and **Watched Constellations** dual-list to restrict raidable alerts to specific areas. Leave both empty to receive alerts for all raidable Skyhooks.
 
----
+______________________________________________________________________
 
 ## Technical Notes
 
@@ -164,13 +178,13 @@ Use the **Watched Regions** and **Watched Constellations** dual-list to restrict
 - Celery Beat schedules register automatically on app startup — no `CELERYBEAT_SCHEDULE` entries in `local.py` needed
 - Vulnerability countdown runs in the browser in the user's local timezone; page auto-reloads every 5 minutes
 
----
+______________________________________________________________________
 
 ## Contributing
 
 Pull requests are welcome. For major changes please open an issue first.
 
----
+______________________________________________________________________
 
 ## License
 

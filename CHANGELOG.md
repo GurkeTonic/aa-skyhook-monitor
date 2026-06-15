@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-06-15
+
+### Fixed
+
+- Raidable skyhooks task failed silently due to wrong ESI tag (`Skyhooks` → `Activities`)
+
 ## [0.3.0] - 2026-06-14
 
 ### Added

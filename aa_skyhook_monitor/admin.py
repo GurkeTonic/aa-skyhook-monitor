@@ -64,7 +64,9 @@ class SkyhookConfigurationAdmin(admin.ModelAdmin):
                 )
                 continue
             try:
-                _send_discord({"embeds": embeds}, webhook_url=config.discord_webhook_url)
+                _send_discord(
+                    {"embeds": embeds}, webhook_url=config.discord_webhook_url
+                )
                 self.message_user(
                     request,
                     _("Test ping sent (Skyhook: %(planet)s).")
@@ -72,7 +74,9 @@ class SkyhookConfigurationAdmin(admin.ModelAdmin):
                 )
             except Exception as e:
                 self.message_user(
-                    request, _("Webhook error: %(err)s") % {"err": e}, level=messages.ERROR
+                    request,
+                    _("Webhook error: %(err)s") % {"err": e},
+                    level=messages.ERROR,
                 )
 
 
@@ -94,11 +98,23 @@ class SkyhookOwnerAdmin(admin.ModelAdmin):
 
 @admin.register(Skyhook)
 class SkyhookAdmin(admin.ModelAdmin):
-    list_display = ["planet_name", "owner", "is_active", "state", "theft_vulnerability_start"]
+    list_display = [
+        "planet_name",
+        "owner",
+        "is_active",
+        "state",
+        "theft_vulnerability_start",
+    ]
     list_filter = ["owner", "is_active"]
     readonly_fields = [
-        "structure_id", "planet_id", "planet_name", "is_active", "state", "owner",
-        "theft_vulnerability_start", "theft_vulnerability_end",
+        "structure_id",
+        "planet_id",
+        "planet_name",
+        "is_active",
+        "state",
+        "owner",
+        "theft_vulnerability_start",
+        "theft_vulnerability_end",
     ]
 
 
@@ -111,11 +127,21 @@ class SkyhookReagentAdmin(admin.ModelAdmin):
 @admin.register(RaidableSkyhook)
 class RaidableSkyhookAdmin(admin.ModelAdmin):
     list_display = [
-        "region_name", "constellation_name", "solar_system_name",
-        "planet_name", "theft_vulnerability_start", "theft_vulnerability_end", "notified",
+        "region_name",
+        "constellation_name",
+        "solar_system_name",
+        "planet_name",
+        "theft_vulnerability_start",
+        "theft_vulnerability_end",
+        "notified",
     ]
     list_filter = ["region_name", "constellation_name", "notified"]
-    search_fields = ["solar_system_name", "planet_name", "region_name", "constellation_name"]
+    search_fields = [
+        "solar_system_name",
+        "planet_name",
+        "region_name",
+        "constellation_name",
+    ]
     ordering = ["theft_vulnerability_start"]
 
     def has_add_permission(self, request):
@@ -126,5 +152,3 @@ class RaidableSkyhookAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-

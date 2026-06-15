@@ -1,10 +1,9 @@
 """Skyhook Models"""
 
+from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
-
-from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
 
 from aa_skyhook_monitor.constants import BAY_VOLUME_M3
 from aa_skyhook_monitor.managers import SkyhookManager
@@ -44,11 +43,15 @@ class RaidWatchConstellation(models.Model):
 class SkyhookConfiguration(models.Model):
     discord_webhook_url = models.URLField(
         blank=True,
-        help_text=_("Discord webhook URL for own-skyhook notifications (empty = disabled)"),
+        help_text=_(
+            "Discord webhook URL for own-skyhook notifications (empty = disabled)"
+        ),
     )
     raidable_webhook_url = models.URLField(
         blank=True,
-        help_text=_("Discord webhook URL for raidable-skyhook alerts (empty = disabled)"),
+        help_text=_(
+            "Discord webhook URL for raidable-skyhook alerts (empty = disabled)"
+        ),
     )
     last_full_sync = models.DateTimeField(
         null=True,
@@ -70,7 +73,9 @@ class SkyhookConfiguration(models.Model):
         RaidWatchConstellation,
         blank=True,
         related_name="+",
-        help_text=_("Show only raidable skyhooks in these constellations (empty = show all)."),
+        help_text=_(
+            "Show only raidable skyhooks in these constellations (empty = show all)."
+        ),
     )
 
     class Meta:
@@ -90,7 +95,11 @@ class SkyhookConfiguration(models.Model):
     @classmethod
     def get_webhook_url(cls):
         config = cls.objects.first()
-        return config.discord_webhook_url if config and config.discord_webhook_url else None
+        return (
+            config.discord_webhook_url
+            if config and config.discord_webhook_url
+            else None
+        )
 
     @classmethod
     def mark_synced(cls):

@@ -28,6 +28,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
@@ -35,38 +36,34 @@ dynamic = [
     "version",
 ]
 dependencies = [
-    "allianceauth>=5.1.0",
+    "allianceauth>=5.1",
     "django-esi>=4",
     "django-eveonline-sde",
 ]
-
-[project.entry-points."allianceauth.app"]
-aa_skyhook_monitor = "aa_skyhook_monitor.apps:AaSkyhookMonitorConfig"
-
-[project.urls]
-Homepage = "https://github.com/GurkeTonic/aa-skyhook-monitor"
-Source = "https://github.com/GurkeTonic/aa-skyhook-monitor"
-Tracker = "https://github.com/GurkeTonic/aa-skyhook-monitor/issues"
-Changelog = "https://github.com/GurkeTonic/aa-skyhook-monitor/blob/main/CHANGELOG.md"
+urls.Changelog = "https://github.com/GurkeTonic/aa-skyhook-monitor/blob/main/CHANGELOG.md"
+urls.Homepage = "https://github.com/GurkeTonic/aa-skyhook-monitor"
+urls.Source = "https://github.com/GurkeTonic/aa-skyhook-monitor"
+urls.Tracker = "https://github.com/GurkeTonic/aa-skyhook-monitor/issues"
+entry-points."allianceauth.app".aa_skyhook_monitor = "aa_skyhook_monitor.apps:AaSkyhookMonitorConfig"
 
 [tool.hatch]
+version.path = "aa_skyhook_monitor/__init__.py"
 build.include = [
     "/aa_skyhook_monitor",
 ]
-version.path = "aa_skyhook_monitor/__init__.py"
 
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-known_first_party = ["aa_skyhook_monitor"]
+known_first_party = [ "aa_skyhook_monitor" ]
 
-[tool.pylint.messages_control]
-disable = ["C0114", "C0115", "C0116", "R0903"]
+[tool.pylint]
+messages_control.disable = [ "C0114", "C0115", "C0116", "R0903" ]
 
-[tool.coverage.run]
-source = ["aa_skyhook_monitor"]
-branch = true
-omit = [
+[tool.coverage]
+run.branch = true
+run.omit = [
     "aa_skyhook_monitor/migrations/*",
     "aa_skyhook_monitor/tests/*",
 ]
+run.source = [ "aa_skyhook_monitor" ]
