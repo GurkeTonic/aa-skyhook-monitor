@@ -110,9 +110,13 @@ class TestSkyhookReagentProperties(TestCase):
         self.assertEqual(r.bay_capacity_units, self._TEST_CAPACITY)
 
     def test_bay_capacity_units_unknown_planet(self):
-        r = self._make_reagent(volume=0.01, secured_stock=0, unsecured_stock=0, planet_id=99999999)
+        r = self._make_reagent(
+            volume=0.01, secured_stock=0, unsecured_stock=0, planet_id=99999999
+        )
         self.assertEqual(r.bay_capacity_units, 0)
 
     def test_secured_pct_unknown_planet_returns_zero(self):
-        r = self._make_reagent(volume=0.01, secured_stock=1000, unsecured_stock=0, planet_id=99999999)
+        r = self._make_reagent(
+            volume=0.01, secured_stock=1000, unsecured_stock=0, planet_id=99999999
+        )
         self.assertEqual(r.secured_pct, 0)

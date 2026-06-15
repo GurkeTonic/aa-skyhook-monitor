@@ -3482,4 +3482,3 @@ def get_planet_harvest_rate(planet_id: int) -> int:
     """Return hourly harvest rate in units for a planet, or 0 if unknown."""
     entry = PLANET_REAGENT_DATA.get(planet_id)
     return entry[0] if entry else 0
-
