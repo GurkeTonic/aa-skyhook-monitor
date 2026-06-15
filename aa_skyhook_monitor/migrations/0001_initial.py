@@ -9,52 +9,102 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('eveonline', '0025_remove_evecharacter_last_updated_and_more'),
+        ("eveonline", "0025_remove_evecharacter_last_updated_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Skyhook',
+            name="Skyhook",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('structure_id', models.BigIntegerField(unique=True)),
-                ('structure_name', models.CharField(max_length=255)),
-                ('planet_id', models.IntegerField(blank=True, null=True)),
-                ('planet_name', models.CharField(blank=True, max_length=100)),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("structure_id", models.BigIntegerField(unique=True)),
+                ("structure_name", models.CharField(max_length=255)),
+                ("planet_id", models.IntegerField(blank=True, null=True)),
+                ("planet_name", models.CharField(blank=True, max_length=100)),
             ],
             options={
-                'default_permissions': (),
+                "default_permissions": (),
             },
         ),
         migrations.CreateModel(
-            name='SkyhookBayItem',
+            name="SkyhookBayItem",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('type_id', models.IntegerField()),
-                ('type_name', models.CharField(blank=True, max_length=255)),
-                ('quantity', models.BigIntegerField()),
-                ('is_secure_bay', models.BooleanField()),
-                ('skyhook', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='bay_items', to='aa_skyhook_monitor.skyhook')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("type_id", models.IntegerField()),
+                ("type_name", models.CharField(blank=True, max_length=255)),
+                ("quantity", models.BigIntegerField()),
+                ("is_secure_bay", models.BooleanField()),
+                (
+                    "skyhook",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="bay_items",
+                        to="aa_skyhook_monitor.skyhook",
+                    ),
+                ),
             ],
             options={
-                'default_permissions': (),
+                "default_permissions": (),
             },
         ),
         migrations.CreateModel(
-            name='SkyhookOwner',
+            name="SkyhookOwner",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('last_updated', models.DateTimeField(blank=True, null=True)),
-                ('character', models.ForeignKey(help_text='Charakter dessen ESI-Token für API-Abfragen genutzt wird', null=True, on_delete=django.db.models.deletion.SET_NULL, to='eveonline.evecharacter')),
-                ('corporation', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='skyhook_owner', to='eveonline.evecorporationinfo')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("last_updated", models.DateTimeField(blank=True, null=True)),
+                (
+                    "character",
+                    models.ForeignKey(
+                        help_text="Charakter dessen ESI-Token für API-Abfragen genutzt wird",
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="eveonline.evecharacter",
+                    ),
+                ),
+                (
+                    "corporation",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="skyhook_owner",
+                        to="eveonline.evecorporationinfo",
+                    ),
+                ),
             ],
             options={
-                'default_permissions': (),
+                "default_permissions": (),
             },
         ),
         migrations.AddField(
-            model_name='skyhook',
-            name='owner',
-            field=models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='skyhooks', to='aa_skyhook_monitor.skyhookowner'),
+            model_name="skyhook",
+            name="owner",
+            field=models.ForeignKey(
+                on_delete=django.db.models.deletion.CASCADE,
+                related_name="skyhooks",
+                to="aa_skyhook_monitor.skyhookowner",
+            ),
         ),
     ]

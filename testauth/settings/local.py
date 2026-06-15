@@ -47,9 +47,9 @@ NOTIFICATIONS_MAX_PER_USER = 50
 # Tests don't run collectstatic, so use the plain (non-manifest) staticfiles
 # backend to avoid "Missing staticfiles manifest entry" errors when rendering
 # Alliance Auth's base templates.
-STORAGES["staticfiles"]["BACKEND"] = (
-    "django.contrib.staticfiles.storage.StaticFilesStorage"
-)
+STORAGES["staticfiles"][
+    "BACKEND"
+] = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 
 # if os.environ.get("USE_MYSQL", True) is True:

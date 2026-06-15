@@ -7,19 +7,27 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0007_skyhookconfiguration'),
-        ('eveonline', '0025_remove_evecharacter_last_updated_and_more'),
+        ("aa_skyhook_monitor", "0007_skyhookconfiguration"),
+        ("eveonline", "0025_remove_evecharacter_last_updated_and_more"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='skyhookconfiguration',
-            name='discord_webhook_url',
-            field=models.URLField(blank=True, help_text='Discord webhook URL for Skyhook notifications (empty = disabled)'),
+            model_name="skyhookconfiguration",
+            name="discord_webhook_url",
+            field=models.URLField(
+                blank=True,
+                help_text="Discord webhook URL for Skyhook notifications (empty = disabled)",
+            ),
         ),
         migrations.AlterField(
-            model_name='skyhookowner',
-            name='character',
-            field=models.ForeignKey(help_text='Character whose ESI token is used for API queries', null=True, on_delete=django.db.models.deletion.SET_NULL, to='eveonline.evecharacter'),
+            model_name="skyhookowner",
+            name="character",
+            field=models.ForeignKey(
+                help_text="Character whose ESI token is used for API queries",
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                to="eveonline.evecharacter",
+            ),
         ),
     ]

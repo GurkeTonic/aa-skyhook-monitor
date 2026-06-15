@@ -6,18 +6,32 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0006_skyhook_notified_start_for_and_more'),
+        ("aa_skyhook_monitor", "0006_skyhook_notified_start_for_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SkyhookConfiguration',
+            name="SkyhookConfiguration",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('discord_webhook_url', models.URLField(blank=True, help_text='Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "discord_webhook_url",
+                    models.URLField(
+                        blank=True,
+                        help_text="Discord Webhook URL für Skyhook-Notifications (leer = deaktiviert)",
+                    ),
+                ),
             ],
             options={
-                'default_permissions': (),
+                "default_permissions": (),
             },
         ),
     ]

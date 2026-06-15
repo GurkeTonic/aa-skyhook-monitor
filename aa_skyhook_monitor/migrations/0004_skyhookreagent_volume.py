@@ -6,13 +6,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0003_skyhook_state_skyhook_theft_vulnerability_end_and_more'),
+        (
+            "aa_skyhook_monitor",
+            "0003_skyhook_state_skyhook_theft_vulnerability_end_and_more",
+        ),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='skyhookreagent',
-            name='volume',
+            model_name="skyhookreagent",
+            name="volume",
             field=models.FloatField(default=0),
         ),
     ]

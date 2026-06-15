@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0005_alter_skyhookowner_options'),
+        ("aa_skyhook_monitor", "0005_alter_skyhookowner_options"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='skyhook',
-            name='notified_start_for',
+            model_name="skyhook",
+            name="notified_start_for",
             field=models.DateTimeField(blank=True, null=True),
         ),
         migrations.AddField(
-            model_name='skyhook',
-            name='notified_warning_for',
+            model_name="skyhook",
+            name="notified_warning_for",
             field=models.DateTimeField(blank=True, null=True),
         ),
     ]

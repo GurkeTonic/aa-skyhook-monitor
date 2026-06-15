@@ -3,10 +3,9 @@
 from datetime import timedelta
 from unittest.mock import MagicMock
 
+from allianceauth.tests.auth_utils import AuthUtils
 from django.test import TestCase
 from django.utils import timezone
-
-from allianceauth.tests.auth_utils import AuthUtils
 
 from aa_skyhook_monitor.constants import BAY_VOLUME_M3
 from aa_skyhook_monitor.models import Skyhook, SkyhookOwner, SkyhookReagent
@@ -24,9 +23,13 @@ class TestSkyhookVulnProperties(TestCase):
     def _make_skyhook(self, start_offset_minutes, end_offset_minutes=None):
         now = timezone.now()
         skyhook = Skyhook.__new__(Skyhook)
-        skyhook.theft_vulnerability_start = now + timedelta(minutes=start_offset_minutes)
+        skyhook.theft_vulnerability_start = now + timedelta(
+            minutes=start_offset_minutes
+        )
         if end_offset_minutes is not None:
-            skyhook.theft_vulnerability_end = now + timedelta(minutes=end_offset_minutes)
+            skyhook.theft_vulnerability_end = now + timedelta(
+                minutes=end_offset_minutes
+            )
         else:
             skyhook.theft_vulnerability_end = None
         return skyhook
@@ -81,9 +84,13 @@ class TestSkyhookReagentProperties(TestCase):
         self.assertEqual(r.unsecured_m3, 1000)
 
     def test_secured_pct_capped_at_100(self):
-        r = self._make_reagent(volume=1.0, secured_stock=BAY_VOLUME_M3 * 2, unsecured_stock=0)
+        r = self._make_reagent(
+            volume=1.0, secured_stock=BAY_VOLUME_M3 * 2, unsecured_stock=0
+        )
         self.assertEqual(r.secured_pct, 100)
 
     def test_unsecured_pct_partial(self):
-        r = self._make_reagent(volume=1.0, secured_stock=0, unsecured_stock=BAY_VOLUME_M3 // 2)
+        r = self._make_reagent(
+            volume=1.0, secured_stock=0, unsecured_stock=BAY_VOLUME_M3 // 2
+        )
         self.assertEqual(r.unsecured_pct, 50)

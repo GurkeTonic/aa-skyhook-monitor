@@ -1,11 +1,10 @@
+from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
+from allianceauth.services.hooks import get_extension_logger
 from django.contrib import messages
 from django.contrib.auth.decorators import permission_required
 from django.db.models import Q
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext as _
-
-from allianceauth.eveonline.models import EveCharacter, EveCorporationInfo
-from allianceauth.services.hooks import get_extension_logger
 from esi.decorators import token_required
 
 from .models import RaidableSkyhook, Skyhook, SkyhookConfiguration, SkyhookOwner
@@ -42,7 +41,9 @@ def raidable(request):
         list(config.watched_regions.values_list("name", flat=True)) if config else []
     )
     watched_constellations = (
-        list(config.watched_constellations.values_list("name", flat=True)) if config else []
+        list(config.watched_constellations.values_list("name", flat=True))
+        if config
+        else []
     )
 
     skyhooks = RaidableSkyhook.objects.order_by("theft_vulnerability_start")
@@ -72,14 +73,19 @@ def add_owner(request, token):
         messages.error(request, _("Character not found in Auth."))
         return redirect("aa_skyhook_monitor:index")
     try:
-        corporation = EveCorporationInfo.objects.get(corporation_id=character.corporation_id)
+        corporation = EveCorporationInfo.objects.get(
+            corporation_id=character.corporation_id
+        )
     except EveCorporationInfo.DoesNotExist:
-        corporation = EveCorporationInfo.objects.create_corporation(character.corporation_id)
+        corporation = EveCorporationInfo.objects.create_corporation(
+            character.corporation_id
+        )
     SkyhookOwner.objects.update_or_create(
         corporation=corporation, defaults={"character": character}
     )
     messages.success(
         request,
-        _("%(corp)s added to Skyhook Monitor.") % {"corp": corporation.corporation_name},
+        _("%(corp)s added to Skyhook Monitor.")
+        % {"corp": corporation.corporation_name},
     )
     return redirect("aa_skyhook_monitor:index")

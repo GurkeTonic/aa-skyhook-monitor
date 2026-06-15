@@ -7,35 +7,50 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0001_initial'),
+        ("aa_skyhook_monitor", "0001_initial"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='skyhook',
-            name='structure_name',
+            model_name="skyhook",
+            name="structure_name",
         ),
         migrations.AddField(
-            model_name='skyhook',
-            name='is_active',
+            model_name="skyhook",
+            name="is_active",
             field=models.BooleanField(default=False),
         ),
         migrations.CreateModel(
-            name='SkyhookReagent',
+            name="SkyhookReagent",
             fields=[
-                ('id', models.AutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('type_id', models.IntegerField()),
-                ('type_name', models.CharField(blank=True, max_length=255)),
-                ('secured_stock', models.BigIntegerField(default=0)),
-                ('unsecured_stock', models.BigIntegerField(default=0)),
-                ('skyhook', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='reagents', to='aa_skyhook_monitor.skyhook')),
+                (
+                    "id",
+                    models.AutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("type_id", models.IntegerField()),
+                ("type_name", models.CharField(blank=True, max_length=255)),
+                ("secured_stock", models.BigIntegerField(default=0)),
+                ("unsecured_stock", models.BigIntegerField(default=0)),
+                (
+                    "skyhook",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="reagents",
+                        to="aa_skyhook_monitor.skyhook",
+                    ),
+                ),
             ],
             options={
-                'default_permissions': (),
-                'unique_together': {('skyhook', 'type_id')},
+                "default_permissions": (),
+                "unique_together": {("skyhook", "type_id")},
             },
         ),
         migrations.DeleteModel(
-            name='SkyhookBayItem',
+            name="SkyhookBayItem",
         ),
     ]

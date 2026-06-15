@@ -1,9 +1,8 @@
 """Tests for views"""
 
-from django.test import TestCase, RequestFactory
-from django.contrib.auth.models import AnonymousUser
-
 from allianceauth.tests.auth_utils import AuthUtils
+from django.contrib.auth.models import AnonymousUser
+from django.test import RequestFactory, TestCase
 
 
 class TestIndexView(TestCase):
@@ -14,7 +13,11 @@ class TestIndexView(TestCase):
         # Hook URLs are auto-wrapped with main_character_required, so the user
         # needs a main character to reach the view.
         AuthUtils.add_main_character_2(
-            self.user_with_perm, "Perm Char", 90000010, corp_id=2001, corp_name="Test Corp"
+            self.user_with_perm,
+            "Perm Char",
+            90000010,
+            corp_id=2001,
+            corp_name="Test Corp",
         )
         AuthUtils.add_permission_to_user_by_name(
             "aa_skyhook_monitor.view_skyhooks", self.user_with_perm

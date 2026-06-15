@@ -9,15 +9,17 @@ from datetime import datetime, timedelta
 from time import sleep
 
 import requests
+from allianceauth.services.hooks import get_extension_logger
+from allianceauth.services.tasks import QueueOnce
 from celery import shared_task
-
 from django.db.models import F
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
-
-from allianceauth.services.hooks import get_extension_logger
-from allianceauth.services.tasks import QueueOnce
-from esi.exceptions import ESIBucketLimitException, ESIErrorLimitException, HTTPNotModified
+from esi.exceptions import (
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+    HTTPNotModified,
+)
 from esi.models import Token
 
 from aa_skyhook_monitor.app_settings import (
@@ -149,7 +151,9 @@ def _send_start_ping(skyhook):
 # ---------------------------------------------------------------------------
 # Notification task
 # ---------------------------------------------------------------------------
-@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+@shared_task(
+    base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT
+)
 def check_skyhook_notifications():
     if not SkyhookConfiguration.get_webhook_url():
         return
@@ -158,20 +162,28 @@ def check_skyhook_notifications():
     warning_from = now + timedelta(minutes=SKYHOOK_MONITOR_WARNING_MINUTES) - margin
     warning_to = now + timedelta(minutes=SKYHOOK_MONITOR_WARNING_MINUTES) + margin
 
-    for skyhook in Skyhook.objects.filter(
-        theft_vulnerability_start__gte=warning_from,
-        theft_vulnerability_start__lte=warning_to,
-        reagents__isnull=False,
-    ).exclude(notified_warning_for=F("theft_vulnerability_start")).distinct():
+    for skyhook in (
+        Skyhook.objects.filter(
+            theft_vulnerability_start__gte=warning_from,
+            theft_vulnerability_start__lte=warning_to,
+            reagents__isnull=False,
+        )
+        .exclude(notified_warning_for=F("theft_vulnerability_start"))
+        .distinct()
+    ):
         _send_warning_ping(skyhook)
         skyhook.notified_warning_for = skyhook.theft_vulnerability_start
         skyhook.save(update_fields=["notified_warning_for"])
 
-    for skyhook in Skyhook.objects.filter(
-        theft_vulnerability_start__lte=now,
-        theft_vulnerability_end__gte=now,
-        reagents__isnull=False,
-    ).exclude(notified_start_for=F("theft_vulnerability_start")).distinct():
+    for skyhook in (
+        Skyhook.objects.filter(
+            theft_vulnerability_start__lte=now,
+            theft_vulnerability_end__gte=now,
+            reagents__isnull=False,
+        )
+        .exclude(notified_start_for=F("theft_vulnerability_start"))
+        .distinct()
+    ):
         _send_start_ping(skyhook)
         skyhook.notified_start_for = skyhook.theft_vulnerability_start
         skyhook.save(update_fields=["notified_start_for"])
@@ -180,7 +192,9 @@ def check_skyhook_notifications():
 # ---------------------------------------------------------------------------
 # ESI sync tasks
 # ---------------------------------------------------------------------------
-@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+@shared_task(
+    base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT
+)
 def update_all_skyhooks():
     for owner_pk in SkyhookOwner.objects.values_list("pk", flat=True):
         update_owner_skyhooks.delay(owner_pk)
@@ -221,7 +235,9 @@ def update_owner_skyhooks(owner_pk):
 
     from eve_sde.models import Planet as SdePlanet
 
-    candidate_planet_ids = [s.planet_id for s in skyhook_list if getattr(s, "planet_id", None)]
+    candidate_planet_ids = [
+        s.planet_id for s in skyhook_list if getattr(s, "planet_id", None)
+    ]
     relevant_planet_ids = set(
         SdePlanet.objects.filter(
             id__in=candidate_planet_ids,
@@ -244,13 +260,17 @@ def update_owner_skyhooks(owner_pk):
     for skyhook in skyhook_list:
         if skyhook.planet_id not in relevant_planet_ids:
             continue
-        update_skyhook_detail.delay(owner_pk, corporation_id, skyhook.id, skyhook.planet_id)
+        update_skyhook_detail.delay(
+            owner_pk, corporation_id, skyhook.id, skyhook.planet_id
+        )
 
     owner.last_updated = timezone.now()
     owner.save(update_fields=["last_updated"])
 
 
-@shared_task(rate_limit="15/m", time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT, **ESI_RETRY)
+@shared_task(
+    rate_limit="15/m", time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT, **ESI_RETRY
+)
 def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
     try:
         owner = SkyhookOwner.objects.get(pk=owner_pk)
@@ -265,7 +285,10 @@ def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
     force_refresh = False
     try:
         existing = Skyhook.objects.get(structure_id=skyhook_id)
-        if existing.theft_vulnerability_end and existing.theft_vulnerability_end < timezone.now():
+        if (
+            existing.theft_vulnerability_end
+            and existing.theft_vulnerability_end < timezone.now()
+        ):
             force_refresh = True
     except Skyhook.DoesNotExist:
         pass
@@ -298,8 +321,12 @@ def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
             "planet_name": _get_planet_name(planet_id) if planet_id else "",
             "is_active": bool(getattr(detail, "is_active", False)),
             "state": getattr(detail, "state", "") or "",
-            "theft_vulnerability_start": _to_dt(getattr(vuln, "start", None)) if vuln else None,
-            "theft_vulnerability_end": _to_dt(getattr(vuln, "end", None)) if vuln else None,
+            "theft_vulnerability_start": (
+                _to_dt(getattr(vuln, "start", None)) if vuln else None
+            ),
+            "theft_vulnerability_end": (
+                _to_dt(getattr(vuln, "end", None)) if vuln else None
+            ),
         },
     )
 
@@ -319,7 +346,9 @@ def update_skyhook_detail(owner_pk, corporation_id, skyhook_id, planet_id):
 # ---------------------------------------------------------------------------
 # Public raidable-skyhooks task (no auth required)
 # ---------------------------------------------------------------------------
-@shared_task(base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT)
+@shared_task(
+    base=QueueOnce, once={"graceful": True}, time_limit=SKYHOOK_MONITOR_TASKS_TIME_LIMIT
+)
 def update_raidable_skyhooks():
     """Fetch the public /skyhooks/raidable endpoint and refresh the local cache.
 
@@ -346,7 +375,9 @@ def update_raidable_skyhooks():
     try:
         from eve_sde.models import SolarSystem
     except ImportError:
-        logger.error("eve_sde not available — cannot resolve system names for raidable skyhooks")
+        logger.error(
+            "eve_sde not available — cannot resolve system names for raidable skyhooks"
+        )
         return
 
     system_ids = {e.solar_system_id for e in raw_entries}
@@ -360,6 +391,7 @@ def update_raidable_skyhooks():
     planet_ids = {e.planet_id for e in raw_entries}
     try:
         from eve_sde.models import Planet as SdePlanet
+
         planets = {p.id: p.name for p in SdePlanet.objects.filter(id__in=planet_ids)}
     except Exception:
         planets = {}
@@ -379,8 +411,12 @@ def update_raidable_skyhooks():
                 security_status=solar_system.security_status,
                 constellation_name=solar_system.constellation.name,
                 region_name=solar_system.constellation.region.name,
-                theft_vulnerability_start=_to_dt(getattr(vuln, "start", None)) if vuln else None,
-                theft_vulnerability_end=_to_dt(getattr(vuln, "end", None)) if vuln else None,
+                theft_vulnerability_start=(
+                    _to_dt(getattr(vuln, "start", None)) if vuln else None
+                ),
+                theft_vulnerability_end=(
+                    _to_dt(getattr(vuln, "end", None)) if vuln else None
+                ),
             )
         )
 
@@ -395,8 +431,11 @@ def update_raidable_skyhooks():
             stale.delete()
 
     SkyhookConfiguration.mark_raidable_synced()
-    logger.info("Synced raidable skyhooks (%d in feed, %d total in DB)",
-                len(records), RaidableSkyhook.objects.count())
+    logger.info(
+        "Synced raidable skyhooks (%d in feed, %d total in DB)",
+        len(records),
+        RaidableSkyhook.objects.count(),
+    )
 
     _sync_raid_watchlist_options()
     _notify_new_raidable_skyhooks()
@@ -461,7 +500,9 @@ def _notify_new_raidable_skyhooks():
     from django.db.models import Q
 
     watched_regions = list(config.watched_regions.values_list("name", flat=True))
-    watched_constellations = list(config.watched_constellations.values_list("name", flat=True))
+    watched_constellations = list(
+        config.watched_constellations.values_list("name", flat=True)
+    )
 
     new_skyhooks = RaidableSkyhook.objects.filter(notified=False)
     if watched_regions or watched_constellations:
@@ -493,4 +534,6 @@ def _notify_new_raidable_skyhooks():
     _send_discord({"embeds": [embed]}, webhook_url=webhook_url)
     logger.info("Sent raidable notification for %d new skyhooks", len(new_skyhooks))
 
-    RaidableSkyhook.objects.filter(pk__in=[s.pk for s in new_skyhooks]).update(notified=True)
+    RaidableSkyhook.objects.filter(pk__in=[s.pk for s in new_skyhooks]).update(
+        notified=True
+    )

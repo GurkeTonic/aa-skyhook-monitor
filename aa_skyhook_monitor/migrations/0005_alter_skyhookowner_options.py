@@ -6,12 +6,18 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('aa_skyhook_monitor', '0004_skyhookreagent_volume'),
+        ("aa_skyhook_monitor", "0004_skyhookreagent_volume"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='skyhookowner',
-            options={'default_permissions': (), 'permissions': (('view_skyhooks', 'Can view Skyhook bay contents'), ('manage_skyhooks', 'Can add and remove corporations'))},
+            name="skyhookowner",
+            options={
+                "default_permissions": (),
+                "permissions": (
+                    ("view_skyhooks", "Can view Skyhook bay contents"),
+                    ("manage_skyhooks", "Can add and remove corporations"),
+                ),
+            },
         ),
     ]
