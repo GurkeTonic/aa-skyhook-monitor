@@ -5,8 +5,8 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
-from aa_skyhook_monitor.constants import BAY_VOLUME_M3
 from aa_skyhook_monitor.managers import SkyhookManager
+from aa_skyhook_monitor.planet_resources import get_planet_capacity
 
 
 class RaidWatchRegion(models.Model):
@@ -248,9 +248,23 @@ class SkyhookReagent(models.Model):
         return round(self.unsecured_stock * self.volume)
 
     @property
-    def secured_pct(self):
-        return min(100, round(self.secured_m3 / BAY_VOLUME_M3 * 100))
+    def bay_capacity_units(self) -> int:
+        return get_planet_capacity(self.skyhook.planet_id)
 
     @property
-    def unsecured_pct(self):
-        return min(100, round(self.unsecured_m3 / BAY_VOLUME_M3 * 100))
+    def bay_m3(self) -> int:
+        return round(self.bay_capacity_units * self.volume)
+
+    @property
+    def secured_pct(self) -> int:
+        cap = self.bay_capacity_units
+        if not cap:
+            return 0
+        return min(100, round(self.secured_stock / cap * 100))
+
+    @property
+    def unsecured_pct(self) -> int:
+        cap = self.bay_capacity_units
+        if not cap:
+            return 0
+        return min(100, round(self.unsecured_stock / cap * 100))

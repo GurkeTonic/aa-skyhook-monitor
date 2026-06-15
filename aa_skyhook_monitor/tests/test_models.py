@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 from django.test import TestCase
 from django.utils import timezone
 
-from aa_skyhook_monitor.constants import BAY_VOLUME_M3
 from aa_skyhook_monitor.models import Skyhook, SkyhookOwner, SkyhookReagent
+from aa_skyhook_monitor.planet_resources import PLANET_REAGENT_DATA
 
 
 def make_owner():
@@ -67,8 +67,19 @@ class TestSkyhookVulnProperties(TestCase):
 
 
 class TestSkyhookReagentProperties(TestCase):
-    def _make_reagent(self, volume, secured_stock, unsecured_stock):
+    # Use a real planet from the SDE dict for capacity tests.
+    # UQ9-3C III (planet_id=40272997): amount_per_cycle=717, capacity=1_046_820 units
+    _TEST_PLANET_ID = 40272997
+    _TEST_CAPACITY = PLANET_REAGENT_DATA[_TEST_PLANET_ID][1]  # 1_046_820
+
+    def _make_reagent(self, volume, secured_stock, unsecured_stock, planet_id=None):
+        from django.db.models.base import ModelState
+
+        skyhook = MagicMock()
+        skyhook.planet_id = planet_id or self._TEST_PLANET_ID
         r = SkyhookReagent.__new__(SkyhookReagent)
+        r._state = ModelState()
+        r._state.fields_cache["skyhook"] = skyhook
         r.volume = volume
         r.secured_stock = secured_stock
         r.unsecured_stock = unsecured_stock
@@ -84,12 +95,24 @@ class TestSkyhookReagentProperties(TestCase):
 
     def test_secured_pct_capped_at_100(self):
         r = self._make_reagent(
-            volume=1.0, secured_stock=BAY_VOLUME_M3 * 2, unsecured_stock=0
+            volume=1.0, secured_stock=self._TEST_CAPACITY * 2, unsecured_stock=0
         )
         self.assertEqual(r.secured_pct, 100)
 
     def test_unsecured_pct_partial(self):
         r = self._make_reagent(
-            volume=1.0, secured_stock=0, unsecured_stock=BAY_VOLUME_M3 // 2
+            volume=1.0, secured_stock=0, unsecured_stock=self._TEST_CAPACITY // 2
         )
         self.assertEqual(r.unsecured_pct, 50)
+
+    def test_bay_capacity_units_known_planet(self):
+        r = self._make_reagent(volume=0.01, secured_stock=0, unsecured_stock=0)
+        self.assertEqual(r.bay_capacity_units, self._TEST_CAPACITY)
+
+    def test_bay_capacity_units_unknown_planet(self):
+        r = self._make_reagent(volume=0.01, secured_stock=0, unsecured_stock=0, planet_id=99999999)
+        self.assertEqual(r.bay_capacity_units, 0)
+
+    def test_secured_pct_unknown_planet_returns_zero(self):
+        r = self._make_reagent(volume=0.01, secured_stock=1000, unsecured_stock=0, planet_id=99999999)
+        self.assertEqual(r.secured_pct, 0)

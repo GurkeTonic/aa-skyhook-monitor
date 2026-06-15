@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-06-15
+
+### Fixed
+
+- Bay capacity is now derived per planet from the CCP SDE instead of a single hardcoded value; Ice planet skyhooks (Superionic Ice) now show the correct bay size
+
 ## [0.3.3] - 2026-06-15
 
 ### Fixed

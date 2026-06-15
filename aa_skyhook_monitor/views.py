@@ -20,10 +20,12 @@ def index(request):
         .select_related("owner__corporation")
         .ordered_by_vuln()
     )
-    skyhook_data = [
-        {"skyhook": s, "reagents": list(s.reagents.order_by("type_name"))}
-        for s in skyhooks
-    ]
+    skyhook_data = []
+    for s in skyhooks:
+        reagents = list(s.reagents.order_by("type_name"))
+        for r in reagents:
+            r.skyhook = s
+        skyhook_data.append({"skyhook": s, "reagents": reagents})
     return render(
         request,
         "aa_skyhook_monitor/index.html",

@@ -52,14 +52,14 @@
                     <div class="progress mt-1" style="height:4px">
                         <div class="progress-bar bg-warning" style="width:{{ reagent.unsecured_pct }}%"></div>
                     </div>
-                    <small class="text-muted">{{ reagent.unsecured_m3|intcomma }} / 10.468 m³</small>
+                    <small class="text-muted">{{ reagent.unsecured_m3|intcomma }} / {{ reagent.bay_m3|intcomma }} m³</small>
                 </td>
                 <td class="text-end">
                     {{ reagent.secured_stock|intcomma }}
                     <div class="progress mt-1" style="height:4px">
                         <div class="progress-bar bg-success" style="width:{{ reagent.secured_pct }}%"></div>
                     </div>
-                    <small class="text-muted">{{ reagent.secured_m3|intcomma }} / 10.468 m³</small>
+                    <small class="text-muted">{{ reagent.secured_m3|intcomma }} / {{ reagent.bay_m3|intcomma }} m³</small>
                 </td>
                 {% if forloop.first %}
                 <td rowspan="{{ entry.reagents|length }}" class="text-center">
